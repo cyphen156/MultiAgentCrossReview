@@ -1,0 +1,16 @@
+# Local agent and IDE state
+/.claude/
+/.vs/
+
+# Local read-only target mirror populated by sync.ps1
+/CyphenEngine/
+/Modules/
+/CyphenBuild.props
+
+# Local build and scratch artifacts
+/Temp/
+*.user
+*.log
+
+# Optional machine-specific configuration
+/local.settings.psd1
