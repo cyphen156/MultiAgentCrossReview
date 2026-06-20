@@ -1,0 +1,175 @@
+diff --git a/CyphenEngine/DevLog/2026/26.06.19.txt b/CyphenEngine/DevLog/2026/26.06.19.txt
+index e69de29..1111111 100644
+--- a/CyphenEngine/DevLog/2026/26.06.19.txt
++++ b/CyphenEngine/DevLog/2026/26.06.19.txt
+@@ -0,0 +1,166 @@
++Date: 2026-06-19
++Branch: #2-Renderer-모듈-개발
++
++작업 요약
++\tBranch #1에서 정리한 엔진 실행 기반 위에
++\tRenderer DLL 모듈을 연결하기 위한 실행 컨텍스트와
++\t동적 모듈 관리 기반을 추가했습니다.
++
++\tLaunchContext / EngineContext를 통해
++\t플랫폼 Launch가 수집한 주 윈도우 정보를
++\t엔진 초기화 경계로 전달하고 보관하도록 구성했습니다.
++
++\tModuleDescriptor / ModuleManager / ModuleLoader를 추가하여
++\t설치된 모듈 목록과 활성 상태를 기준으로
++\t동적 라이브러리를 로드하고 관리하도록 구성했습니다.
++
++\tRenderer 공용 API와 DLL ABI 계약을 추가하고,
++\tCyphenRendererDx11을 독립 DLL 프로젝트로 분리했습니다.
++
++
++진행한 커밋
++\t#2_1 [Refactor] 엔진 컨텍스트 추가 및 실행 컨텍스트 주입
++\t#2_2 [Module] 동적 모듈 관리 기반 및 Renderer ABI 계약 추가
++
++
++주요 정리 내용
++\t1. LaunchContext / EngineContext 추가
++\t\tLaunchContext는 플랫폼 Launch가 수집한
++\t\t주 윈도우 핸들과 초기 클라이언트 크기를 전달합니다.
++
++\t\tEngineContext는 전달받은 실행 정보를
++\t\tCyphenEngine 수명 동안 보관합니다.
++
++\t\tEngineStatus는 실행 컨텍스트에 포함하지 않고,
++\t\t기존대로 CyphenEngine이 직접 소유하도록 유지했습니다.
++
++\t2. Windows Launch 실행 컨텍스트 구성
++\t\t메인 윈도우 생성 후 HWND와 클라이언트 크기를 조회하여
++\t\tLaunchContext를 구성하도록 추가했습니다.
++
++\t\tStartEngineThread가 LaunchContext를 받아
++\t\tCyphenEngine 초기화 경계로 전달하도록 변경했습니다.
++
++\t\tCyphenEngine 초기화 완료 후 모듈 목록을 갱신하고,
++\t\t엔진 스레드 종료 후 모듈을 정리하도록
++\t\tLaunch에서 프로세스 단위 수명 순서를 구성했습니다.
++
++\t3. ModuleDescriptor 추가
++\t\tModuleDescriptor는 설치된 모듈을 기술하는 값 타입입니다.
++
++\t\tmoduleName은 모듈 식별 이름을 보관하고,
++\t\tisEnabled는 현재 프로세스에서 해당 모듈을
++\t\t로드할지 여부를 보관합니다.
++
++\t\t목록에 포함된 모듈은 설치된 모듈로 취급하며,
++\t\tisEnabled는 필수 여부가 아니라 Preference에 따른
++\t\tON / OFF 상태로 사용합니다.
++
++\t4. ModuleManager 추가
++\t\tModuleManager는 ModuleDescriptor 목록과
++\t\t현재 로드된 모듈 상태를 관리합니다.
++
++\t\tRefresh는 전달받은 목록을 기준으로
++\t\t활성 모듈을 로드하고 비활성 또는 제거된 모듈을 언로드합니다.
++
++\t\t로드된 모듈의 네이티브 핸들은 외부에 노출하지 않고,
++\t\t모듈 이름을 기준으로 심볼 조회와 상태 확인을 제공합니다.
++
++\t\t로드 순서를 별도로 보관하고,
++\t\tShutdown에서는 역순으로 모듈을 언로드합니다.
++
++\t\tGetLoadedModuleNames는 내부 목록의 참조를 노출하지 않고
++\t\t호출자에게 복사본을 전달하도록 구성했습니다.
++
++\t5. ModuleLoader 플랫폼 경계 추가
++\t\tModuleLoader는 플랫폼별 동적 라이브러리
++\t\t입출력만 담당하는 HAL 내부 구현입니다.
++
++\t\tWindows 구현은 모듈 이름에 .dll 확장자를 구성하고,
++\t\tWindowsString을 통해 wide 문자열로 변환합니다.
++
++\t\tLoadLibraryW / GetProcAddress / FreeLibrary를 통해
++\t\t모듈 로드, 심볼 조회, 언로드를 처리합니다.
++
++\t\tModuleLoader는 RendererType이나 모듈별 API 버전을
++\t\t판단하지 않도록 책임을 제한했습니다.
++
++\t6. Renderer 공용 API 및 DLL ABI 계약 추가
++\t\tRenderer는 ModuleManager에 로드된 모듈을 조회하고,
++\t\tRenderer 계약을 노출하는 모듈을 선택합니다.
++
++\t\tRendererModuleApi / RendererModuleResult와
++\t\tGetRendererModuleApi 진입점 계약을 추가했습니다.
++
++\t\tDLL 경계에서는 C++ 추상 클래스나 vtable을 노출하지 않고,
++\t\textern C 진입점과 고정된 API 구조체를 사용합니다.
++
++\t\tRenderer는 API 버전과 RendererType을 검증하며,
++\t\t동적 라이브러리 로드와 언로드는 직접 수행하지 않습니다.
++
++\t7. CyphenRendererDx11 DLL 프로젝트 추가
++\t\tCyphenRendererDx11을 엔진 실행 파일과 분리된
++\t\tDynamicLibrary 프로젝트로 추가했습니다.
++
++\t\tGetRendererModuleApi를 export하여
++\t\tRenderer API 버전과 Dx11 타입 정보를 제공합니다.
++
++\t\t엔진과 Renderer DLL은 공용 Renderer ABI 헤더만 공유하며,
++\t\t구체 Dx11 구현 파일은 엔진 프로젝트에 포함하지 않습니다.
++
++\t8. 프로젝트 및 빌드 경로 정리
++\t\t엔진과 Renderer DLL의 빌드 산출물을
++\t\tBuildArtifacts 아래 공통 경로로 모았습니다.
++
++\t\t모듈별 프로젝트 경로를 Modules 아래로 정리하고,
++\t\tCyphenBuild.props를 통해 공통 출력 경로를 주입했습니다.
++
++\t\tDebug 실행 위치가 변경되어도 CoreIo 고정 리소스를 읽을 수 있도록
++\t\t빌드 후 테스트 리소스 복사 단계를 추가했습니다.
++
++\t9. Renderer 검증용 리소스 추가
++\t\tResources/Thumnail에 프사.jpg와 프사2.jpg를 추가했습니다.
++
++\t\t두 이미지는 이후 Renderer 모듈의 텍스처 출력과
++\t\t회전 동작을 검증하는 시그니처 리소스로 유지합니다.
++
++
++정리된 설계 기준
++\t- LaunchContext는 엔진 초기화 시점의 외부 입력을 전달합니다.
++\t- EngineContext는 엔진 실행 환경만 보관합니다.
++\t- ModuleDescriptor는 설치 모듈의 선언 정보와 활성 상태를 보관합니다.
++\t- ModuleManager는 모듈 목록, 로드 상태, 로드 순서와 수명을 관리합니다.
++\t- ModuleLoader는 플랫폼별 동적 라이브러리 입출력만 담당합니다.
++\t- Renderer는 Renderer ABI 조회와 검증을 담당합니다.
++\t- Renderer는 DLL을 직접 로드하거나 언로드하지 않습니다.
++\t- 모듈 로드 실패는 엔진 초기화 실패로 취급하지 않습니다.
++\t- Renderer DLL 경계에는 C++ 추상 클래스와 vtable을 노출하지 않습니다.
++\t- 구체 Renderer 구현은 엔진 프로젝트에 중복 배치하지 않습니다.
++\t- vcxproj / filters 파일은 Visual Studio 관리 파일이므로 탭 / LF 규칙에서 제외합니다.
++
++
++검증
++\tCyphenRendererDx11 DLL 단독 빌드 성공을 확인했습니다.
++
++\tWindows 실행 시 BuildArtifacts 출력 경로에서
++\tCyphenRendererDx11.dll이 로드되는 것을 확인했습니다.
++
++\tModuleManager와 ModuleLoader를 통한 물리적 DLL 로드까지 확인했으며,
++\tRenderer 실행 초기화와 프레임 출력은 아직 연결하지 않았습니다.
++
++
++보류한 항목
++\t- RendererModuleApi 실행 초기화 / 종료 함수
++\t- Renderer 전용 스레드 생성과 종료 순서
++\t- Dx11 Device / DeviceContext / SwapChain 생성
++\t- 시그니처 이미지 텍스처 업로드와 회전 출력
++\t- RuntimeConfig / Preference 기반 모듈 ON / OFF
++\t- 런타임 Refresh 동기화 정책
++\t- OpenGL ES Renderer DLL
++\t- Linux .so 모듈 포팅
++
++
++다음 작업
++\tRenderer 모듈의 실행 초기화와 종료 계약을 연결합니다.
++
++\tRenderer 전용 스레드를 도입하기 전에
++\t모듈 활성화, 종료, DLL 언로드 순서를 먼저 확정합니다.
++
++\t멀티 에이전트 동기화 작업으로 인해 진행하지 못한
++\tRenderer 후속 구현은 다음 연속 작업에서 이어갑니다.
