@@ -1,0 +1,2 @@
+ReadAllText_UTF8_LFCyphenEngine Core I/O Input
+한글 입력 테스트

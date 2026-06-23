@@ -8,13 +8,15 @@
 
 ## 현재 결론 (갱신됨)
 
-**Converged — 구현 대기.** Claude 측 차단 근거 없음.
+**Implemented — #2_5 커밋 완료.** 차단 3건 커밋에서 해소 확인(Baseline 2026-06-23T15:51).
 
-- 필수 반영: ① CV 술어 람다 제거(명시적 while로 변환, 논리 검증 완료) ② `SetThreadState`의 threadMutex 불변식을 전체 코드에 명시.
-- lost-wakeup 우려는 해소 확인(`SetThreadState`가 threadMutex 보유 후 store, `Initialize`가 동일 mutex로 대기).
-- Word Stream 채택은 사용자 결정으로 유지 + 위 범위 가드레일 수용.
-- 이월(의도): Resize/WM_SIZE, mutex/cv 정책 래퍼, queue depth 확대.
-- 실제 원본 코드 적용·DevLog 작성·커밋은 사용자가 수행(미러는 읽기 전용).
+- 다회차 개정 후 최종: 입력 `Frame`(공개 POD) → render thread `BuildRenderCommandList` → `RenderCommand` IR → `executeCommandList`(ABI) → Dx11 실행(Clear/Present).
+- 공통 추출: `ModuleCommand`/`ModuleCommandBuffer`(carrier) + `RenderCommand*`(domain).
+- 배치: Module 계열 Core→`Modules/Public|Private`, `ModuleBinding`→`ModuleBinder`. 규율: Modules/Public은 Core+HAL만 의존.
+- Naming 진동(Frame, RenderCommand) 최종 확정 — 기준·이력은 [Q001_009_revision.md](Claud/Q001_009_revision.md).
+- 검증: ModuleTests PASS=34 / FAIL=0.
+- **#2_6 이월(의도)**: 실패 정책(executeCommandList 결과 전파), Resize/SwapChain 재생성, Backend Capability, device-lost.
+- 실제 코드 적용·DevLog·커밋은 사용자가 수행(미러는 읽기 전용).
 
 ## 기록 인덱스
 
@@ -23,6 +25,7 @@
 | 001 | Questions/Q001.md | User | none | Converged |
 | 003 | Claud/Q001_003_cross_review.md | Claude | Q001 (#2_5 제안) | Cross-Review-Complete |
 | 008 | Claud/Q001_008_evidence_check.md | Claude | 003 + 사용자 보정 | Converged |
+| 009 | Claud/Q001_009_revision.md | Claude | 008 + #2_5 개정·커밋 | Implemented |
 
 비고: 본 사이클은 Codex 미참여. 초기안은 사용자가 #2_5 구현안으로 직접 제출했고, Claude가 교차검증(003)·수렴 확인(008)을 기록했다.
 
