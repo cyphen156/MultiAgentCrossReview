@@ -1,0 +1,16 @@
+# Normalize all text files to LF in the repository.
+# Working tree line endings stay native per each machine's core.autocrlf.
+* text=auto
+
+*.md   text
+*.txt  text
+*.ps1  text
+*.cmd  text eol=crlf
+*.patch text
+*.json text
+
+# Crash dumps / binaries — never touch
+*.stackdump binary
+*.exe binary
+*.dll binary
+*.pdb binary
