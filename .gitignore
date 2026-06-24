@@ -8,9 +8,11 @@
 /CyphenBuild.props
 
 # Local build and scratch artifacts
+/BuildArtifacts/
 /Temp/
 *.user
 *.log
+*.stackdump
 
 # Optional machine-specific configuration
 /local.settings.psd1
