@@ -1,7 +1,7 @@
 # CyphenEngine 참고용 복사본 재동기화
 # 원본 저장소(C:\Project\CyphenEngine)에서 Engine 소스/문서/리소스와
 # 저장소 루트의 Modules 트리에 속한 DLL 프로젝트, 그리고 repo root의
-# CyphenBuild.props(공유 빌드 설정)를 미러합니다.
+# CyphenBuild.props(공유 빌드 설정)와 CMakeLists.txt를 미러합니다.
 # git 이력 / IDE 사용자 설정 / 빌드 산출물(BuildArtifacts)은 동기화 대상이 아닙니다.
 # 사용법: PowerShell에서  .\sync.ps1 [-SourceRepoRoot <path>]
 
@@ -61,6 +61,19 @@ if (Test-Path "$srcRoot\CyphenEngine.sln") {
     $rcSolution = if ($?) { 0 } else { 8 }
 }
 
+$rcCMakeLists = 0
+$cmakeListsState = "absent"
+if (Test-Path "$srcRoot\CMakeLists.txt") {
+    Copy-Item -LiteralPath "$srcRoot\CMakeLists.txt" -Destination "$dst\CMakeLists.txt" -Force
+    $rcCMakeLists = if ($?) { 0 } else { 8 }
+    $cmakeListsState = if ($rcCMakeLists -eq 0) { "CMakeLists.txt" } else { "copy-failed" }
+}
+elseif (Test-Path "$dst\CMakeLists.txt") {
+    Remove-Item -LiteralPath "$dst\CMakeLists.txt" -Force
+    $rcCMakeLists = if ($?) { 0 } else { 8 }
+    $cmakeListsState = if ($rcCMakeLists -eq 0) { "absent" } else { "remove-failed" }
+}
+
 # repo root의 공유 빌드 설정 (CyphenBuild.props) 미러.
 # 복사본도 같은 상대구조(repo root)에 둬야 vcxproj의 ..\ 경로가 맞는다.
 $rcCyphenBuildProps = 0
@@ -80,9 +93,9 @@ if (Test-Path $srcModules) {
 }
 
 if ($rcSource -ge 8 -or $rcDevLog -ge 8 -or $rcResources -ge 8 -or
-    $rcProject -ge 8 -or $rcSolution -ge 8 -or $rcModules -ge 8 -or
+    $rcProject -ge 8 -or $rcSolution -ge 8 -or $rcCMakeLists -ge 8 -or $rcModules -ge 8 -or
     $rcCyphenBuildProps -ge 8) {
-    Write-Error "동기화 실패 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, Modules=$rcModules, BuildProps=$rcCyphenBuildProps)"
+    Write-Error "동기화 실패 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, CMakeLists=$rcCMakeLists, Modules=$rcModules, BuildProps=$rcCyphenBuildProps)"
     exit 1
 }
 
@@ -92,9 +105,9 @@ $logCount = (Get-ChildItem "$dst\DevLog" -Recurse -File | Measure-Object).Count
 $resourceCount = (Get-ChildItem "$dst\Resources" -Recurse -File | Measure-Object).Count
 $stamp = Get-Date -Format 'yyyy-MM-ddTHH:mm'
 
-"$stamp sync | Source=$srcCount DevLog=$logCount Resources=$resourceCount EngineProject=CyphenEngine.vcxproj ModuleProjects=$moduleProjectCount" |
+"$stamp sync | Source=$srcCount DevLog=$logCount Resources=$resourceCount EngineProject=CyphenEngine.vcxproj CMakeLists=$cmakeListsState ModuleProjects=$moduleProjectCount" |
     Set-Content -Path "$dst\.baseline" -Encoding utf8
 
-Write-Host "재동기화 완료 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, Modules=$rcModules, BuildProps=$rcCyphenBuildProps, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
-Write-Host "baseline 기록: $stamp sync (Source=$srcCount, DevLog=$logCount, Resources=$resourceCount, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
+Write-Host "재동기화 완료 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, CMakeLists=$rcCMakeLists, Modules=$rcModules, BuildProps=$rcCyphenBuildProps, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
+Write-Host "baseline 기록: $stamp sync (Source=$srcCount, DevLog=$logCount, Resources=$resourceCount, CMakeLists=$cmakeListsState, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
 exit 0

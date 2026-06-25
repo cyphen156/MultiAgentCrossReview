@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<PropertyGroup Label="CyphenBuild">
+		<CyphenRepoRoot>$(MSBuildThisFileDirectory)</CyphenRepoRoot>
+		<CyphenBuildArtifactsRoot>$(CyphenRepoRoot)BuildArtifacts\</CyphenBuildArtifactsRoot>
+
+		<!-- 산출물 경로 규격화: Binaries/Intermediate 아래 OS 키(Windows) 한 겹 추가.
+		     Linux(CMake)는 BuildArtifacts\Binaries\Linux\<Config>\ 로 대응. -->
+		<OutDir>$(CyphenBuildArtifactsRoot)Binaries\Windows\$(Platform)\$(Configuration)\</OutDir>
+		<IntDir>$(CyphenBuildArtifactsRoot)Intermediate\Windows\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
+
+		<TargetName>$(MSBuildProjectName)</TargetName>
+
+		<!-- 런타임 테스트 산출물이 소스 트리 대신 Binaries로 떨어지게 (CWD = OutDir) -->
+		<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+		<DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+	</PropertyGroup>
+
+	<ItemDefinitionGroup>
+		<Link>
+			<ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
+			<ImportLibrary>$(OutDir)$(TargetName).lib</ImportLibrary>
+		</Link>
+	</ItemDefinitionGroup>
+</Project>

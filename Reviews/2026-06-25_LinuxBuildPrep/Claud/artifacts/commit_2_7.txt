@@ -1,0 +1,56 @@
+#2_7 [Build] 플랫폼 경계 정리 및 Linux 빌드용 CMake 도입
+
+변경 요약
+	Linux 빌드 준비를 위해 플랫폼 컴파일 경계를 정리하고
+	CMake 빌드 시스템을 도입했습니다.
+
+	디버그 힙과 디버그 출력 같은 플랫폼 / MSVC 종속을 framework.h로 모으고,
+	pch.h는 순수 조립만 담당하도록 정리했습니다.
+
+	기존 MSVC vcxproj와 병존하는 CMakeLists를 추가하여
+	공통 코어가 Linux 타깃으로도 구성 / 컴파일되는 기반을 마련했습니다.
+
+	Windows 프로덕션 빌드는 vcxproj / .sln을 유지하고,
+	CMake는 Linux 빌드 전용으로 역할을 분리했습니다.
+
+상세 변경 내용
+	1. framework.h 플랫폼 경계 통합
+		플랫폼별 시스템 헤더, OS 타입 규약, 디버그 힙 경계,
+		디버그 출력 경계를 framework.h 플랫폼 분기로 모았습니다.
+
+		Windows 디버그 힙은 _CRTDBG_MAP_ALLOC을 crtdbg.h 포함 이전에 정의하여
+		new / malloc 매핑이 유지되도록 했습니다.
+
+		디버그 출력은 PRINT_DEBUG_OUTPUT 매크로로 통일하여,
+		Windows는 OutputDebugStringA, Linux는 std::fputs(stderr)로 분기합니다.
+
+	2. pch.h 정리
+		pch.h는 PlatformDefine / framework / define 조립만 담당하도록 정리하고,
+		기존 crtdbg 블록과 MSVC 종속 매크로를 framework.h로 옮겼습니다.
+
+		_DEBUG는 플랫폼 공통 디버그 판별자로 유지하고,
+		MSVC 전용 crtdbg만 Windows 경계로 격리했습니다.
+
+	3. 디버그 출력 호출 치환
+		Renderer, Engine, CoreIOTests, ModuleTest의 OutputDebugStringA 직접 호출을
+		PRINT_DEBUG_OUTPUT으로 치환했습니다.
+
+		모든 호출은 _DEBUG 컨텍스트 안에서만 사용하여
+		릴리스 빌드와 Linux 빌드에서 안전하도록 정리했습니다.
+
+	4. CMake 빌드 시스템 도입
+		실행 파일 타깃을 빌드하는 CMakeLists를 추가하고,
+		기존 MSVC vcxproj와 병존하도록 구성했습니다.
+
+		공통 소스와 Windows 전용 구현 (WindowsJpegCodec, Platform / Windows, 리소스)을
+		분리하여, Linux 타깃에서는 Windows 전용 코드를 제외하도록 했습니다.
+
+		Windows에서는 CMake가 MSVC 프로젝트를 생성해 빌드를 검증하고,
+		실제 Linux 빌드는 같은 CMakeLists로 별도 환경에서 수행합니다.
+
+	5. 빌드 산출물 경로 규격화
+		빌드 산출물을 BuildArtifacts 아래 Binaries / Intermediate로 나누고,
+		그 아래 운영체제 키를 두어 Windows와 Linux 산출물을 분리했습니다.
+
+		CyphenBuild.props의 OutDir / IntDir을 Windows 키 기준으로 정렬하고,
+		CMake 생성물과 빌드 산출물은 .gitignore에 추가했습니다.

@@ -1,0 +1,92 @@
+Date: 2026-06-25
+Branch: #2-Renderer-모듈-개발
+
+작업 요약
+	#2_7에서 Linux 빌드 준비를 진행하고 #2 브랜치 작업을 마감했습니다.
+
+	플랫폼 컴파일 경계를 framework.h로 정리하고,
+	기존 MSVC vcxproj와 병존하는 CMake 빌드 시스템을 도입했습니다.
+
+	이번 단계의 목표는 Linux에서 실제로 그리는 것이 아니라,
+	같은 구조가 다른 플랫폼 타깃으로도 구성 / 컴파일되는지 확인하는 것입니다.
+
+	Windows 프로덕션 빌드는 vcxproj / .sln을 그대로 유지하고,
+	CMake는 Linux 빌드 전용으로 역할을 분리했습니다.
+
+
+진행한 커밋
+	#2_7 [Build] 플랫폼 경계 정리 및 Linux 빌드용 CMake 도입
+
+
+주요 정리 내용
+	1. framework.h 플랫폼 경계 통합
+		플랫폼별 시스템 헤더, OS 타입 규약, 디버그 힙 경계,
+		디버그 출력 경계를 framework.h 플랫폼 분기로 모았습니다.
+
+		Windows 디버그 힙은 _CRTDBG_MAP_ALLOC을 crtdbg.h 포함 이전에 정의하여
+		new / malloc 매핑이 유지되도록 했습니다.
+
+		디버그 출력은 PRINT_DEBUG_OUTPUT 매크로로 통일하고,
+		Windows는 OutputDebugStringA, Linux는 std::fputs(stderr)로 분기합니다.
+
+	2. pch.h 정리
+		pch.h는 PlatformDefine / framework / define 조립만 담당하도록 정리하고,
+		기존 crtdbg 블록과 MSVC 종속 매크로를 framework.h로 옮겼습니다.
+
+		_DEBUG는 플랫폼 공통 디버그 판별자로 유지하고,
+		MSVC 전용 crtdbg만 Windows 경계로 격리했습니다.
+
+	3. 디버그 출력 호출 치환
+		Renderer, Engine, CoreIOTests, ModuleTest의 OutputDebugStringA 직접 호출을
+		PRINT_DEBUG_OUTPUT으로 치환했습니다.
+
+		모든 호출은 _DEBUG 컨텍스트 안에서만 사용하여
+		릴리스 빌드와 Linux 빌드에서 안전하도록 정리했습니다.
+
+	4. CMake 빌드 시스템 도입
+		실행 파일 타깃을 빌드하는 CMakeLists를 추가하고,
+		기존 MSVC vcxproj와 병존하도록 구성했습니다.
+
+		공통 소스와 Windows 전용 구현을 분리하여,
+		Linux 타깃에서는 WindowsJpegCodec, Platform / Windows, 리소스를 제외합니다.
+
+		Windows에서는 CMake가 MSVC 프로젝트를 생성해 빌드를 검증하고,
+		실제 Linux 빌드는 같은 CMakeLists로 별도 환경에서 수행합니다.
+
+	5. 빌드 산출물 경로 규격화
+		빌드 산출물을 BuildArtifacts 아래 Binaries / Intermediate로 나누고,
+		그 아래 운영체제 키를 두어 Windows와 Linux 산출물을 분리했습니다.
+
+		CyphenBuild.props의 OutDir / IntDir을 Windows 키 기준으로 정렬하고,
+		CMake 생성물과 빌드 산출물은 .gitignore에 추가했습니다.
+
+
+정리한 설계 기준
+	- framework.h가 플랫폼 컴파일 환경 / 디버그 힙 / 디버그 출력 경계를 단독으로 소유합니다.
+	- _DEBUG는 플랫폼 공통 디버그 판별자이며, MSVC 전용 crtdbg만 Windows 경계로 둡니다.
+	- Windows 프로덕션 빌드는 vcxproj / .sln, Linux 빌드는 CMake로 역할을 분리합니다.
+	- CMake의 Windows 분기는 Linux 환경 없이 빌드 기술서를 검증하는 프록시 용도로 유지합니다.
+	- #2와 #3의 경계는 "Linux에서 컴파일된다"이며, 미구현 플랫폼 심볼은 링크 단계에서 드러납니다.
+
+
+검증
+	Windows에서 CMake로 MSVC 프로젝트를 생성해 Debug x64 빌드가 통과하는 것을 확인했습니다.
+
+	실행 파일이 BuildArtifacts / Binaries 아래 규격 경로로 산출되고,
+	기존 vcxproj 빌드와 동등하게 동작하여 회귀가 없음을 확인했습니다.
+
+	Linux 빌드는 이번 단계에서 실측하지 않았으며,
+	WSL2 환경에서 #3 진입 시 첫 체크포인트로 수행합니다.
+
+
+다음 작업
+	#3에서 Linux 빌드를 실제로 수행하고 애플리케이션 통합을 검증합니다.
+
+	WSL2 환경에서 같은 CMakeLists로 공통 코어를 컴파일하고,
+	Platform / Linux 구현(ModuleLoader, PlatformFile, PlatformTime, Launch)을 채워
+	링크 단계에서 드러난 미구현 심볼을 해소합니다.
+
+	Windows 전용 구현(DX11 Renderer Backend, WIC JPEG codec)은 Linux 대체 경로로
+	OpenGL ES / EGL Backend와 Linux JPEG codec leaf를 준비합니다.
+
+	ResourceManager, Mesh / Material, Vulkan은 Linux 빌드 확인 이후 단계로 이월합니다.

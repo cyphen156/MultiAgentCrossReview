@@ -40,15 +40,29 @@ Claud/                  Claude 역할과 검토 지침
 Reviews/                질문·답변·반박·증거·Callback·결정
 Reviews/_TEMPLATE/      새 검토 주제 템플릿
 Reviews/run-review.ps1  반자동 교차검증 실행기
-sync.ps1                로컬 대상 프로젝트의 읽기 전용 미러 생성
+sync.ps1                로컬 대상 프로젝트의 참고 미러 갱신
+sync.cmd                sync.ps1 실행 래퍼
 ```
 
-`CyphenEngine/`, `Modules/`, `Temp/`는 첫 번째 실제 대상인 CyphenEngine의 로컬 참고 미러와 빌드 흔적입니다. 공개 저장소에는 포함되지 않으며 `sync.ps1`이 각 컴퓨터에서 별도로 구성합니다.
+`CyphenEngine/`, `Modules/`, `CyphenBuild.props`, `Temp/`는 첫 번째 실제 대상인 CyphenEngine의 로컬 참고 미러와 빌드 흔적입니다. 공개 저장소에는 포함되지 않으며 `sync.ps1`이 각 컴퓨터에서 별도로 구성합니다.
+
+현재 CyphenEngine 미러는 검토와 패치 초안 작성에 필요한 기준 파일을 함께 가져옵니다.
+
+- `CyphenEngine/Source/`
+- `CyphenEngine/DevLog/`
+- `CyphenEngine/Resources/`
+- `CyphenEngine/CyphenEngine.vcxproj`
+- `CyphenEngine/CyphenEngine.sln`
+- `CyphenEngine/CMakeLists.txt` (원본에 있을 때)
+- `Modules/`
+- `CyphenBuild.props`
+
+원본에서 `CyphenEngine/CMakeLists.txt`가 사라지면 미러의 stale 파일도 제거합니다. `.baseline`에는 실제 동기화 시점과 Source / DevLog / Resources / CMakeLists / ModuleProjects 상태를 기록합니다.
 
 ## 빠른 시작
 
 ```powershell
-# 대상 프로젝트의 로컬 읽기 전용 미러 갱신
+# 대상 프로젝트의 로컬 참고 미러 갱신
 .\sync.ps1 -SourceRepoRoot C:\Project\CyphenEngine
 
 # 새 검토 주제 생성
@@ -67,7 +81,8 @@ Copy-Item Reviews\_TEMPLATE Reviews\2026-06-20_Example -Recurse
 
 ## 현재 안전 경계
 
-- 대상 프로젝트 미러는 읽기 전용입니다.
-- 에이전트가 작성하는 검토 결과는 `Reviews/`에만 추가합니다.
+- 대상 프로젝트 원본은 이 저장소에서 수정하지 않습니다.
+- 대상 프로젝트 미러는 원본 적용 전 검토와 패치 초안 작성 기준입니다.
+- 에이전트가 작성하는 append-only 검토 기록은 `Reviews/`에만 추가합니다.
 - 원본 프로젝트 수정·커밋·푸시는 사용자가 원본 저장소에서 수행합니다.
 - 로컬 인증정보, 에이전트 세션, IDE 상태, 빌드 산출물은 이 저장소에 포함하지 않습니다.
