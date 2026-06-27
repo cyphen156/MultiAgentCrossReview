@@ -1,0 +1,25 @@
+#3_1 [Build] Linux 플랫폼·콘텐츠 파일 미러와 Vulkan/OpenGLES 렌더러 모듈 스캐폴드 등록
+
+#3(로드맵 B3, Linux 빌드·통합) 시작 커밋. 이번 커밋은 파일 미러와 모듈
+스캐폴드까지이며, 실제 구현 본체는 다음 커밋으로 이월한다.
+Platform/Linux 미러 (빈 파일, 구현은 다음 커밋):
+- PlatformTime.cpp / PlatformFile.cpp / ModuleLoader.cpp
+- LinuxString.cpp / LinuxString.h
+  - WindowsString(wchar_t 변환) 대응 슬롯. Linux 기본 CChar=UTF-8에서는
+    변환 불필요라 빈 상태 유지. UTF-16 정책 채택 시 ToNarrowString 구현.
+Content/Image/Jpeg 미러 (빈 파일):
+- LinuxJpegCodec.cpp / LinuxJpegCodec.h (WIC 부재 Linux용 JPEG leaf 자리)
+Renderer 모듈:
+- CyphenRendererVulkan: 모듈 DLL 스캐폴드. GetRendererModuleApi 스텁
+  (rendererType=Vulkan), VulkanRenderer 미구현(Initialize=false). DLL 빌드 및
+  GetRendererModuleApi export 확인. createRenderer는 의도적 실패(백엔드 미구현).
+- CyphenRendererOpenGLES: 스켈레톤 등록(보류, 미투자).
+빌드 등록·정합:
+- CyphenEngine.sln: CyphenRendererVulkan / CyphenRendererOpenGLES 프로젝트 등록.
+- CyphenEngine.vcxproj: 모듈 빌드 의존성 추가.
+- RendererTypes.h: enum OpenGL -> OpenGLES (모듈명·전략 정합).
+- framework.h: PLATFORM_WINDOWS/PLATFORM_LINUX 디버그 매크로 블록 들여쓰기 정리.
+백엔드 전략(참고): 메인 Dx11 유지, 크로스플랫폼/Linux는 Vulkan 채택,
+OpenGLES 보류(web/Android-floor/fallback 씨앗).
+다음 커밋(#3_2 예정): Platform/Linux 구현 본체(clock_gettime / POSIX fd / dlopen),
+이어 Vulkan first-light(Windows 우선).

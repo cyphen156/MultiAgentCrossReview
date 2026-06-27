@@ -1,0 +1,90 @@
+Date: 2026-06-25
+Branch: #3-Linux-빌드-테스트
+
+작업 요약
+	#3(로드맵 B3) 브랜치를 시작했습니다.
+	목표는 Linux 빌드를 실제로 수행하고 애플리케이션 통합을 검증하는 것입니다.
+
+	이번 #3_1은 구현 본체가 아니라, Linux 플랫폼 / 콘텐츠 파일 미러와
+	렌더러 모듈 스캐폴드까지를 정리하는 준비 단계입니다.
+
+	또한 크로스플랫폼 / Linux 렌더러 백엔드 전략을 재확정했습니다.
+	이전까지의 OpenGL ES 주력 계획을 Vulkan 채택으로 전환합니다.
+
+
+진행한 커밋
+	#3_1 [Build] Linux 플랫폼·콘텐츠 파일 미러와 Vulkan/OpenGLES 렌더러 모듈 스캐폴드 등록
+
+
+주요 정리 내용
+	1. 렌더러 백엔드 전략 재확정 (Vulkan 채택)
+		메인 렌더러는 Dx11을 유지하고,
+		크로스플랫폼 / Linux 백엔드를 OpenGL ES 대신 Vulkan으로 채택했습니다.
+
+		OpenGL ES는 보류(스켈레톤만 유지)하여 web(WebGL) / Android 최저호환 /
+		저사양 fallback의 씨앗으로 남기고, Metal은 포기합니다.
+
+		근거: 모듈 경계에서 렌더러 백엔드는 GetRendererModuleApi 하나를 export하는
+		DLL일 뿐이라, 엔진 측 추가 비용은 0이고 복잡도는 DLL 내부에만 갇힙니다.
+		백엔드 표면은 네 함수이고 그리기는 RenderCommand IR 번역이며,
+		Vulkan의 무게는 createRenderer 초기화에만 집중됩니다.
+
+	2. Platform / Linux 파일 미러 (빈 파일, 구현은 다음 커밋)
+		PlatformTime / PlatformFile / ModuleLoader 구현 파일과
+		LinuxString 변환 유닛 자리를 미러로 생성했습니다.
+
+		LinuxString은 WindowsString(wchar_t 변환) 대응 슬롯입니다.
+		Linux 기본 CChar=UTF-8에서는 POSIX가 char*를 받아 변환이 불필요하므로
+		빈 상태로 두고, UTF-16 정책을 채택할 때 ToNarrowString을 구현합니다.
+
+	3. Content / Image / Jpeg Linux leaf 미러 (빈 파일)
+		WIC가 없는 Linux용 JPEG leaf 자리로 LinuxJpegCodec를 미러 생성했습니다.
+
+	4. CyphenRendererVulkan 모듈 DLL 스캐폴드
+		Dx11 모듈 구조를 미러링하여 모듈 DLL 프로젝트로 구성했습니다.
+
+		VS 기본 콘솔 앱 템플릿이었던 vcxproj를 모듈 DLL 프로젝트로 교정했습니다.
+		(DynamicLibrary / x64 단독 / CyphenBuild.props / Source include /
+		TARGET_PLATFORM_WINDOWS / utf-8)
+
+		GetRendererModuleApi를 rendererType=Vulkan으로 채우고,
+		VulkanRenderer는 Initialize=false 스텁으로 두었습니다.
+		Debug x64 빌드로 DLL과 GetRendererModuleApi export를 확인했습니다.
+		createRenderer는 백엔드 미구현이라 의도적으로 실패합니다.
+
+	5. 솔루션 등록과 enum 정합
+		CyphenEngine.sln에 CyphenRendererVulkan / CyphenRendererOpenGLES를 등록하고,
+		CyphenEngine.vcxproj에 모듈 빌드 의존성을 추가했습니다.
+
+		RendererTypes의 enum을 OpenGL에서 OpenGLES로 정합하고,
+		framework.h의 플랫폼 분기 디버그 매크로 블록 들여쓰기를 정리했습니다.
+
+
+정리한 설계 기준
+	- 크로스플랫폼 / Linux 렌더러 백엔드는 Vulkan입니다. OpenGL ES는 보류 슬롯으로 유지합니다.
+	- 렌더러 백엔드는 GetRendererModuleApi 하나를 export하는 DLL이며, 엔진은 ModuleLoader로 동일하게 적재합니다. 백엔드 선택의 엔진 측 비용은 0입니다.
+	- #3_1의 경계는 "파일 미러와 모듈 스캐폴드가 빌드 / 로드된다"이며, 실제 구현 본체는 #3_2로 이월합니다.
+	- LinuxString의 필요성은 CChar 정책이 결정합니다. UTF-8에서는 무참조 슬롯입니다.
+
+
+검증
+	CyphenRendererVulkan을 Debug x64로 Rebuild하여 경고 없이 빌드되는 것을 확인했습니다.
+
+	DLL이 BuildArtifacts / Binaries 규격 경로로 산출되고,
+	GetRendererModuleApi가 export되어 ModuleLoader가 해석 가능함을 확인했습니다.
+
+	부트스트랩 디스크립터로 Vulkan 모듈을 물려 로드 / 선택 경로를 확인했습니다.
+	createRenderer는 스텁 미구현으로 의도적으로 실패하며, 이 테스트 변경은 커밋에 포함하지 않습니다.
+
+
+다음 작업
+	#3_2에서 Platform / Linux 구현 본체를 채워 링크 단계의 미구현 심볼을 해소합니다.
+
+	WSL2 + gcc 환경에서 PlatformTime(clock_gettime), PlatformFile(POSIX fd),
+	ModuleLoader(dlopen), Launch를 구현합니다.
+
+	이어 Vulkan first-light을 Windows에서 먼저 수행하고(validation layer / RenderDoc),
+	그 뒤 Linux first-light로 Platform 미러를 증명합니다.
+
+	모듈 export 매크로(dllexport → Linux visibility-default)는 dlopen 작업과 함께 정리합니다.
+	ResourceManager / Mesh / Material는 Linux 표시 확인 이후로 이월을 유지합니다.
