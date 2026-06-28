@@ -22,7 +22,8 @@ param(
     [int]    $Steps   = 1,
     [switch] $Yes,
     [switch] $DryRun,
-    [switch] $Status
+    [switch] $Status,
+    [switch] $NoPause          # 종료 전 대기 생략 (자동화/비대화형 호출용)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -229,39 +230,66 @@ function Invoke-Agent($step, [string] $promptFile) {
     return ($result -join "`n").Trim()
 }
 
-# ===== main =====
-$Baseline = Get-Baseline
-
-if ($Status) { Show-Status; return }
-
-for ($i = 0; $i -lt $Steps; $i++) {
-    $step = Get-NextStep
-    if ($null -eq $step) {
-        Write-Host "자동 검토 단계 완료 → 사용자 최종 판정 차례. DECISION.md 를 작성하세요." -ForegroundColor Yellow
-        break
+# 종료 전 대기: 최대 N초, 아무 키나 누르면 즉시 종료. 비대화형/-NoPause 면 생략.
+function Wait-BeforeClose([int] $Seconds = 60) {
+    if ($NoPause) { return }
+    try {
+        if (-not [Environment]::UserInteractive) { return }
+        Write-Host ("`n{0}초 후 자동 종료 — 아무 키나 누르면 즉시 종료." -f $Seconds) -ForegroundColor DarkGray
+        $deadline = (Get-Date).AddSeconds($Seconds)
+        while ((Get-Date) -lt $deadline) {
+            if ([Console]::KeyAvailable) { [void][Console]::ReadKey($true); break }
+            Start-Sleep -Milliseconds 200
+        }
     }
-    Write-Host ("`n[다음 스텝] {0} → {1} (Status -> {2})" -f $step.Agent, $step.Phase, $step.NewStatus) -ForegroundColor Cyan
-
-    $promptFile = Join-Path $env:TEMP ("review_{0}_{1}_{2}.txt" -f $Topic, $step.Agent, $step.Phase)
-    Build-Prompt $step | Set-Content -Path $promptFile -Encoding utf8
-
-    if ($DryRun) {
-        Write-Host "[DryRun] 프롬프트 생성: $promptFile  (호출/기록 안 함, 1스텝 미리보기)" -ForegroundColor DarkGray
-        break
-    }
-
-    Test-CLI $step.Agent
-
-    if (-not $Yes) {
-        $ans = Read-Host "이 스텝에서 $($step.Agent) 를 호출할까요? (y/N)"
-        if ($ans -ne 'y') { Write-Host '중단.'; break }
-    }
-
-    Write-Host "실행: $($CLI[$step.Agent])" -ForegroundColor DarkGray
-    $out = Invoke-Agent $step $promptFile
-    if ([string]::IsNullOrWhiteSpace($out)) { Write-Warning "$($step.Agent) 출력이 비었습니다. 기록 생략(재실행하면 같은 스텝부터)."; break }
-
-    Write-Record $step $out
+    catch { }
 }
 
-Show-Status
+# ===== main =====
+# 콘솔이 바로 닫혀도 기록이 남도록 transcript 로그. *.log 는 .gitignore (로컬 전용).
+$logFile = Join-Path $TopicDir 'run-review.log'
+try { Start-Transcript -LiteralPath $logFile -Append | Out-Null } catch { }
+
+try {
+    $Baseline = Get-Baseline
+
+    if ($Status) {
+        Show-Status
+    }
+    else {
+        for ($i = 0; $i -lt $Steps; $i++) {
+            $step = Get-NextStep
+            if ($null -eq $step) {
+                Write-Host "자동 검토 단계 완료 → 사용자 최종 판정 차례. DECISION.md 를 작성하세요." -ForegroundColor Yellow
+                break
+            }
+            Write-Host ("`n[다음 스텝] {0} → {1} (Status -> {2})" -f $step.Agent, $step.Phase, $step.NewStatus) -ForegroundColor Cyan
+
+            $promptFile = Join-Path $env:TEMP ("review_{0}_{1}_{2}.txt" -f $Topic, $step.Agent, $step.Phase)
+            Build-Prompt $step | Set-Content -Path $promptFile -Encoding utf8
+
+            if ($DryRun) {
+                Write-Host "[DryRun] 프롬프트 생성: $promptFile  (호출/기록 안 함, 1스텝 미리보기)" -ForegroundColor DarkGray
+                break
+            }
+
+            Test-CLI $step.Agent
+
+            if (-not $Yes) {
+                $ans = Read-Host "이 스텝에서 $($step.Agent) 를 호출할까요? (y/N)"
+                if ($ans -ne 'y') { Write-Host '중단.'; break }
+            }
+
+            Write-Host "실행: $($CLI[$step.Agent])" -ForegroundColor DarkGray
+            $out = Invoke-Agent $step $promptFile
+            if ([string]::IsNullOrWhiteSpace($out)) { Write-Warning "$($step.Agent) 출력이 비었습니다. 기록 생략(재실행하면 같은 스텝부터)."; break }
+
+            Write-Record $step $out
+        }
+        Show-Status
+    }
+}
+finally {
+    try { Stop-Transcript | Out-Null } catch { }
+    Wait-BeforeClose
+}
