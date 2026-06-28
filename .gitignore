@@ -1,11 +1,12 @@
 # Local agent and IDE state
 /.claude/
+/.codex/
+/.agents/
 /.vs/
 
-# Local read-only target mirror populated by sync.ps1
-/CyphenEngine/
-/Modules/
-/CyphenBuild.props
+# Projects/ 하위 프로젝트 폴더(미러 baseline·편집본·테스트 산출물)는 로컬 전용.
+# 단, Projects/ 직속의 등록 매니페스트(projects.json 등)는 추적해 자동화에 쓴다.
+/Projects/*/
 
 # Local build and scratch artifacts
 /BuildArtifacts/

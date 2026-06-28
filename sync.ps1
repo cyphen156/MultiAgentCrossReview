@@ -1,113 +1,126 @@
-# CyphenEngine 참고용 복사본 재동기화
-# 원본 저장소(C:\Project\CyphenEngine)에서 Engine 소스/문서/리소스와
-# 저장소 루트의 Modules 트리에 속한 DLL 프로젝트, 그리고 repo root의
-# CyphenBuild.props(공유 빌드 설정)와 CMakeLists.txt를 미러합니다.
-# git 이력 / IDE 사용자 설정 / 빌드 산출물(BuildArtifacts)은 동기화 대상이 아닙니다.
-# 사용법: PowerShell에서  .\sync.ps1 [-SourceRepoRoot <path>]
+# 대상 프로젝트 참고 미러 재동기화 — 매니페스트 구동.
+#
+# Projects/projects.json 에 등록된 각 프로젝트를 읽어:
+#   - Projects/<name>/baseline      : 원본 소스/문서/리소스/프로젝트 파일 미러 (읽기전용 기준 사본)
+#   - Projects/<name>/edit/Claud     : ClaudeCode 전용 편집 사본 (없을 때만 시드)
+#   - Projects/<name>/edit/Codex     : Codex 전용 편집 사본 (없을 때만 시드)
+# git 이력 / IDE 설정 / 빌드 산출물은 미러 대상이 아니다.
+# Projects/<name>/** 는 .gitignore 로 커밋되지 않는다 (매니페스트 projects.json 만 추적).
+#
+# 사용법:
+#   .\sync.ps1                        # 매니페스트 전체
+#   .\sync.ps1 -Project CyphenEngine  # 특정 프로젝트만
+#   .\sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드 (Claud|Codex|All)
 
 param(
-    [string] $SourceRepoRoot = "C:\Project\CyphenEngine"
+    [string] $Project = '',
+    [ValidateSet('', 'Claud', 'Codex', 'All')]
+    [string] $ResetEdit = ''
 )
 
-$srcRepoRoot = $SourceRepoRoot
-$srcRoot     = Join-Path $srcRepoRoot "CyphenEngine"
-$srcModules  = Join-Path $srcRepoRoot "Modules"
-$dstRoot     = Split-Path -Parent $MyInvocation.MyCommand.Path
-$dst         = Join-Path $dstRoot "CyphenEngine"
-$dstModules  = Join-Path $dstRoot "Modules"
+$ErrorActionPreference = 'Stop'
+$repoRoot     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectsDir  = Join-Path $repoRoot 'Projects'
+$manifestPath = Join-Path $projectsDir 'projects.json'
 
-if (-not (Test-Path "$srcRoot\Source")) {
-    Write-Error "원본 Source를 찾을 수 없습니다: $srcRoot\Source"
+if (-not (Test-Path $manifestPath)) {
+    Write-Error "프로젝트 매니페스트가 없습니다: $manifestPath"
     exit 1
 }
 
-if (-not (Test-Path "$srcRoot\DevLog")) {
-    Write-Error "원본 DevLog를 찾을 수 없습니다: $srcRoot\DevLog"
+$manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$entries  = @($manifest.projects)
+if ($Project) { $entries = @($entries | Where-Object { $_.name -eq $Project }) }
+if (-not $entries -or $entries.Count -eq 0) {
+    Write-Error "동기화할 프로젝트가 없습니다 (Project='$Project')."
     exit 1
 }
 
-if (-not (Test-Path "$srcRoot\Resources")) {
-    Write-Error "원본 Resources를 찾을 수 없습니다: $srcRoot\Resources"
-    exit 1
+function Get-SourceSha([string] $repo) {
+    try {
+        $sha = & git -C $repo rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $sha) { return $sha.Trim() }
+    }
+    catch { }
+    return 'unknown'
 }
 
-if (-not (Test-Path "$srcRoot\CyphenEngine.vcxproj")) {
-    Write-Error "원본 CyphenEngine.vcxproj를 찾을 수 없습니다: $srcRoot\CyphenEngine.vcxproj"
-    exit 1
+function Seed-Edit([string] $baseline, [string] $editPath, [bool] $force) {
+    if ($force -and (Test-Path $editPath)) {
+        Remove-Item -LiteralPath $editPath -Recurse -Force
+    }
+    if (-not (Test-Path $editPath)) {
+        New-Item -ItemType Directory -Path $editPath -Force | Out-Null
+        robocopy $baseline $editPath /MIR /XD ".vs" "x64" "Debug" "Release" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+        return 'seeded'
+    }
+    return 'kept'
 }
 
-$moduleProjectCount = 0
-if (Test-Path $srcModules) {
-    $moduleProjectCount = @(
-        Get-ChildItem -LiteralPath $srcModules -Filter "*.vcxproj" -File -Recurse
-    ).Count
+function Sync-Project($entry) {
+    $name        = $entry.name
+    $srcRepoRoot = $entry.sourceRepoRoot
+    $engineSub   = if ($entry.PSObject.Properties.Name -contains 'engineSubdir' -and $entry.engineSubdir) { $entry.engineSubdir } else { $name }
+
+    $srcEngine  = Join-Path $srcRepoRoot $engineSub
+    $srcModules = Join-Path $srcRepoRoot 'Modules'
+
+    if (-not (Test-Path "$srcEngine\Source")) {
+        Write-Error "[$name] 원본 Source 없음: $srcEngine\Source"
+        return $false
+    }
+
+    $baseline   = Join-Path $projectsDir "$name\baseline"
+    $dstEngine  = Join-Path $baseline $engineSub
+    $dstModules = Join-Path $baseline 'Modules'
+    New-Item -ItemType Directory -Path $baseline -Force | Out-Null
+
+    Write-Host "[$name] baseline <- $srcRepoRoot" -ForegroundColor Cyan
+
+    robocopy "$srcEngine\Source"    "$dstEngine\Source"    /MIR /XD ".vs" "x64" "Debug" "Release" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+    $rc1 = $LASTEXITCODE
+    robocopy "$srcEngine\DevLog"    "$dstEngine\DevLog"    /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+    $rc2 = $LASTEXITCODE
+    robocopy "$srcEngine\Resources" "$dstEngine\Resources" /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+    $rc3 = $LASTEXITCODE
+
+    foreach ($file in @("$engineSub.vcxproj", "$engineSub.sln", 'CMakeLists.txt')) {
+        $srcFile = Join-Path $srcEngine $file
+        if (Test-Path $srcFile) { Copy-Item -LiteralPath $srcFile -Destination (Join-Path $dstEngine $file) -Force }
+    }
+    if (Test-Path "$srcRepoRoot\CyphenBuild.props") {
+        Copy-Item -LiteralPath "$srcRepoRoot\CyphenBuild.props" -Destination (Join-Path $baseline 'CyphenBuild.props') -Force
+    }
+
+    $rc4 = 0
+    if (Test-Path $srcModules) {
+        robocopy $srcModules $dstModules /MIR /XD ".vs" "x64" "Debug" "Release" /XF "*.vcxproj.user" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+        $rc4 = $LASTEXITCODE
+    }
+
+    if ($rc1 -ge 8 -or $rc2 -ge 8 -or $rc3 -ge 8 -or $rc4 -ge 8) {
+        Write-Error "[$name] 동기화 실패 (Source=$rc1 DevLog=$rc2 Resources=$rc3 Modules=$rc4)"
+        return $false
+    }
+
+    # baseline 마커: 기준 커밋 SHA + Source 파일 수 + 시점. run-review 가 Baseline 으로 인용.
+    $sha    = Get-SourceSha $srcRepoRoot
+    $srcCnt = (Get-ChildItem "$dstEngine\Source" -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+    $stamp  = Get-Date -Format 'yyyy-MM-ddTHH:mm'
+    "$stamp sync | commit=$sha Source=$srcCnt" | Set-Content -Path (Join-Path $baseline '.baseline') -Encoding utf8
+
+    # 편집 사본 시드 (없을 때만; -ResetEdit 으로 강제)
+    $sClaud = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Claud") ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
+    $sCodex = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Codex") ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
+
+    Write-Host "[$name] OK  commit=$sha  Source=$srcCnt  edit/Claud=$sClaud  edit/Codex=$sCodex" -ForegroundColor Green
+    return $true
 }
 
-Write-Host "재동기화: Engine + Modules  ->  $dstRoot" -ForegroundColor Cyan
-
-robocopy "$srcRoot\Source" "$dst\Source" /MIR /XD ".vs" "x64" "Debug" "Release" /NFL /NDL /NJH /NP /R:1 /W:1
-$rcSource = $LASTEXITCODE
-robocopy "$srcRoot\DevLog" "$dst\DevLog" /MIR /NFL /NDL /NJH /NP /R:1 /W:1
-$rcDevLog = $LASTEXITCODE
-robocopy "$srcRoot\Resources" "$dst\Resources" /MIR /NFL /NDL /NJH /NP /R:1 /W:1
-$rcResources = $LASTEXITCODE
-
-Copy-Item -LiteralPath "$srcRoot\CyphenEngine.vcxproj" -Destination "$dst\CyphenEngine.vcxproj" -Force
-$rcProject = if ($?) { 0 } else { 8 }
-
-$rcSolution = 0
-if (Test-Path "$srcRoot\CyphenEngine.sln") {
-    Copy-Item -LiteralPath "$srcRoot\CyphenEngine.sln" -Destination "$dst\CyphenEngine.sln" -Force
-    $rcSolution = if ($?) { 0 } else { 8 }
+$allOk = $true
+foreach ($entry in $entries) {
+    if (-not (Sync-Project $entry)) { $allOk = $false }
 }
-
-$rcCMakeLists = 0
-$cmakeListsState = "absent"
-if (Test-Path "$srcRoot\CMakeLists.txt") {
-    Copy-Item -LiteralPath "$srcRoot\CMakeLists.txt" -Destination "$dst\CMakeLists.txt" -Force
-    $rcCMakeLists = if ($?) { 0 } else { 8 }
-    $cmakeListsState = if ($rcCMakeLists -eq 0) { "CMakeLists.txt" } else { "copy-failed" }
-}
-elseif (Test-Path "$dst\CMakeLists.txt") {
-    Remove-Item -LiteralPath "$dst\CMakeLists.txt" -Force
-    $rcCMakeLists = if ($?) { 0 } else { 8 }
-    $cmakeListsState = if ($rcCMakeLists -eq 0) { "absent" } else { "remove-failed" }
-}
-
-# repo root의 공유 빌드 설정 (CyphenBuild.props) 미러.
-# 복사본도 같은 상대구조(repo root)에 둬야 vcxproj의 ..\ 경로가 맞는다.
-$rcCyphenBuildProps = 0
-if (Test-Path "$srcRepoRoot\CyphenBuild.props") {
-    Copy-Item -LiteralPath "$srcRepoRoot\CyphenBuild.props" -Destination "$dstRoot\CyphenBuild.props" -Force
-    $rcCyphenBuildProps = if ($?) { 0 } else { 8 }
-}
-
-$rcModules = 0
-if (Test-Path $srcModules) {
-    robocopy $srcModules $dstModules /MIR `
-        /XD ".vs" "x64" "Debug" "Release" `
-        /XF "*.vcxproj.user" `
-        /NFL /NDL /NJH /NP /R:1 /W:1
-
-    $rcModules = $LASTEXITCODE
-}
-
-if ($rcSource -ge 8 -or $rcDevLog -ge 8 -or $rcResources -ge 8 -or
-    $rcProject -ge 8 -or $rcSolution -ge 8 -or $rcCMakeLists -ge 8 -or $rcModules -ge 8 -or
-    $rcCyphenBuildProps -ge 8) {
-    Write-Error "동기화 실패 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, CMakeLists=$rcCMakeLists, Modules=$rcModules, BuildProps=$rcCyphenBuildProps)"
-    exit 1
-}
-
-# baseline 마커 기록 (실제 동기화 시점). run-review.ps1 이 이 값을 기록 Baseline으로 사용.
-$srcCount = (Get-ChildItem "$dst\Source" -Recurse -File | Measure-Object).Count
-$logCount = (Get-ChildItem "$dst\DevLog" -Recurse -File | Measure-Object).Count
-$resourceCount = (Get-ChildItem "$dst\Resources" -Recurse -File | Measure-Object).Count
-$stamp = Get-Date -Format 'yyyy-MM-ddTHH:mm'
-
-"$stamp sync | Source=$srcCount DevLog=$logCount Resources=$resourceCount EngineProject=CyphenEngine.vcxproj CMakeLists=$cmakeListsState ModuleProjects=$moduleProjectCount" |
-    Set-Content -Path "$dst\.baseline" -Encoding utf8
-
-Write-Host "재동기화 완료 (Source=$rcSource, DevLog=$rcDevLog, Resources=$rcResources, EngineProject=$rcProject, Solution=$rcSolution, CMakeLists=$rcCMakeLists, Modules=$rcModules, BuildProps=$rcCyphenBuildProps, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
-Write-Host "baseline 기록: $stamp sync (Source=$srcCount, DevLog=$logCount, Resources=$resourceCount, CMakeLists=$cmakeListsState, ModuleProjects=$moduleProjectCount)" -ForegroundColor Green
+if (-not $allOk) { exit 1 }
+Write-Host "재동기화 완료." -ForegroundColor Green
 exit 0
