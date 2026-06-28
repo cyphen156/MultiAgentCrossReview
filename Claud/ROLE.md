@@ -17,7 +17,7 @@
 
 ## 참고 범위
 
-- 읽기 대상: `../CyphenEngine/Source/`, `../CyphenEngine/DevLog/` (그 외는 리커넥션 제외).
+- 읽기 대상: 검토 프로젝트의 `../Projects/<name>/baseline/` 미러 (Source·DevLog). 그 외는 리커넥션 제외.
 - Claude는 **읽기 전용**. 수정/커밋은 사용자가 직접. 원본 `C:\Project\CyphenEngine`은 안 건드림.
 
 ## 재동기화

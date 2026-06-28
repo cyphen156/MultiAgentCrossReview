@@ -3,7 +3,7 @@
 이 문서는 Claude와 Codex가 **공동 참고하는 독립 규칙 md**다.
 기본 대화 컨텍스트 룰 · 코드 스타일 · 기본 참고 · DevLog 작성 포맷을 담는다.
 
-> 참고 대상: `../CyphenEngine/Source/` 와 `../CyphenEngine/DevLog/` 만 (그 외는 리커넥션 제외).
+> 참고 대상: 각 프로젝트의 `../Projects/<name>/baseline/` 미러 (Source·DevLog 등). 그 외는 리커넥션 제외.
 > git 푸시/커밋 운영 내용은 다루지 않는다 — 커밋 메시지 예시는 GitHub 온라인에서 직접 본다.
 
 ---
@@ -26,7 +26,7 @@
 
 ## 3. 기본 참고 — 아키텍처 기준선
 
-상세 출처: `../CyphenEngine/DevLog/폴더 기능 정리.txt`, 작업 방향: `../CyphenEngine/DevLog/Todos.txt`
+상세 출처: `../Projects/CyphenEngine/baseline/CyphenEngine/DevLog/폴더 기능 정리.txt`, 작업 방향: 같은 폴더 `Todos.txt`
 
 - 계층: Build / Core / HAL / Platform / Engine / Runtime / Editor / Modules / pch.
 - **Core는 OS API 직접 호출 금지** — 플랫폼/문자열 정책은 Build가 주입.
@@ -67,13 +67,14 @@ Branch: #1-프로젝트-리팩토링
 
 ## 6. 적대적 검토 교환소 (Reviews/)
 
-두 에이전트의 제안·반박은 `../Reviews/` 에 **질문 단위 append-only**로 기록한다. 규칙: `../Reviews/README.md`.
+두 에이전트의 판단·반박은 `../Reviews/<review-id>/` 에 기록한다. 상세 규칙: `../Reviews/README.md`.
 
-- `Source`·`DevLog` = 불변 기준선 / `Reviews/` = 주장·반박 교환 공간.
-- 각자 자기 폴더(`Codex/`·`Claud/`)에만 쓰고 상대 폴더는 읽기만. 반박은 새 번호 파일로 추가(기존 수정 금지).
-- 두 초기 판단은 작성 중 서로에게 공개하지 않는다. 둘 다 완료되면 양방향 교차검증을 시작한다.
-- 사용자 개입은 필수 승인 게이트가 아니라 `Callbacks/<Q>_C<NNN>_user.md` append-only 기록으로 추가하며, 이후 단계가 이를 함께 검토한다.
-- 모든 기록에 메타데이터(Question-ID·Author·Responds-To·Supersedes·Status·Baseline). 결론이 바뀌어도 **옛 기록은 수정·삭제 금지** — 새 기록에 `Supersedes: <옛 파일>` 로 대체를 명시한다.
-- 기록 파일명은 질문 단위로 분리(`<Q>_001_initial.md`, `<Q>_003_cross_review_codex.md` 등), Evidence도 `<Q>_E<NNN>_<author>.md` 로 질문별 분리.
-- 새 검토는 `Reviews/_TEMPLATE/` 를 `<YYYY-MM-DD>_<주제>/` 로 복사해 시작.
-- 최종 적용·원본 수정은 사용자만 (`Decision/<Q>_decision.md` 기준).
+- baseline 미러(`Projects/<name>/baseline/`) = 불변 기준선 / `Reviews/` = 판단·반박·결정 공간.
+- 각자 자기 폴더(`Claud/`·`Codex/`)의 **단일 `REVIEW.md`**만 쓰고 상대 폴더는 읽기만.
+- **현재 진실 = 작업트리의 파일, 변경 이력 = git.** 결론이 바뀌면 `REVIEW.md`/`DECISION.md`를 덮어쓰고 커밋한다. 번호 붙은 새 파일을 쌓지 않는다(옛 append-only·Supersedes 모델 폐기 — 한 번도 운영된 적 없음).
+- 두 초기판단은 작성 중 서로에게 공개하지 않는다(오케스트레이터가 순서로 봉인). 둘 다 끝나면 양방향 교차검증.
+- 코드 수정은 `Projects/<name>/edit/Claud`·`edit/Codex`(에이전트별, gitignored)에서. 채택 후보 patch만 해당 에이전트 `artifacts/`로 커밋.
+- 사용자 개입(Callback)은 검토 `README.md`의 Callback 섹션에 시간순으로 덧붙인다. 앵커는 선택. 사용자 선호는 검토 조건이지 정답 강제가 아니다.
+- 메타데이터: `Review-ID·Author·Baseline·Status`(+선택 `Session-Id`). baseline은 sync가 기록한 기준 커밋.
+- 새 검토 = `Reviews/_TEMPLATE/`를 `<YYYY-MM-DD>_<주제>/`로 복사. 최종 적용·원본 수정은 사용자만(`DECISION.md` 기준).
+- 2026-06-28 이전 토픽은 옛 번호파일 레이아웃(레거시 동결). 새 모델은 이후 검토에만 적용.

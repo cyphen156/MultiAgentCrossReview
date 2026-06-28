@@ -1,24 +1,23 @@
-# <주제> 검토 요약
+# &lt;review-id&gt; — &lt;검토 주제&gt;
 
-> 이 파일만 **가변**(현재 상태 요약). 독립 판단·교차검증·수정 결론·증거 확인은 append-only.
+> 검토의 현재 상태 요약(가변). 범위·상태·현재 결론을 여기서 갱신한다.
+> 상세 판단은 `Claud/REVIEW.md` · `Codex/REVIEW.md`, 최종은 `DECISION.md`.
 
-- **질문**: (Questions/Q001.md 한 줄 요약)
-- **범위**: (무엇을 다루고, 무엇을 제외하는가)
-- **Baseline**: YYYY-MM-DD sync
+- 주제:
+- 기준 커밋(baseline): &lt;`Projects/<name>/baseline/.baseline` 의 commit=…&gt;
+- 범위:
+- 제외:
+- 상태: Open | In-Review | Decided
 
-## 현재 결론 (갱신됨)
+## 현재 결론 (요약)
 
-(아직 미정 / 또는 최신 합의·판정 요약)
+진행되면 여기만 갱신한다. "지금 무엇이 참인지"를 한 곳에서 본다.
 
-## 기록 인덱스
+## Callback (사용자 개입 · append)
 
-| # | 파일 | Author | Responds-To | Status |
-|---|---|---|---|---|
-| 001 | Codex/Q001_001_initial.md | Codex | none | Initial-Complete |
-| 002 | Claud/Q001_002_initial.md | Claude | none | Initial-Complete |
+검토 중 사용자 의견을 시간순으로 덧붙인다.
+앵커는 선택 — 특정 답변/이전 콜백을 겨냥하면 적고, 주제 전반이면 비워도 된다.
 
-사용자 개입이 있었다면 `Callbacks/Q001_CNNN_user.md`를 함께 기록한다.
-
-## 최종 판정
-
-(Decision/Q001_decision.md 참조)
+<!--
+- [YYYY-MM-DD] (→ 대상: Codex REVIEW 초기 | C1 | 없음) 의견 내용
+-->

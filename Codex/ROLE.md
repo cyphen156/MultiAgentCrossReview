@@ -1,4 +1,4 @@
-# AGENTS.md — Codex 개별 참고
+# Codex 개별 참고
 
 ## 공유 규칙
 
@@ -17,6 +17,6 @@
 
 ## 참고 범위 / 금지사항
 
-- 읽기 대상: `../CyphenEngine/Source/`, `../CyphenEngine/DevLog/` (그 외는 리커넥션 제외).
+- 읽기 대상: 검토 프로젝트의 `../Projects/<name>/baseline/` 미러 (Source·DevLog). 그 외는 리커넥션 제외.
 - 이 복사본은 **읽기 전용 참고본**. 소스 편집·빌드 실행 금지 (공유 baseline 오염 방지).
 - 최종 적용·커밋은 사용자가 원본 레포에서만 한다. (이 복사본엔 git 이력 없음)

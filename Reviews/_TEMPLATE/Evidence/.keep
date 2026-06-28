@@ -1,1 +1,0 @@
-근거 파일 폴더. 각 에이전트가 자기 근거를 append-only 번호 파일로 둔다: E<NNN>_<author>.md (예: E001_codex.md). 공유 단일 파일 금지.
