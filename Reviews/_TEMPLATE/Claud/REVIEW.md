@@ -3,7 +3,7 @@ Review-ID: <id>
 Author: Claude
 Baseline: <commit=...>
 Session-Id:            # 선택 — 이 검토를 만든 대화 세션(AgentSessionSync) 라벨. 경로/내용 아님.
-Status: Initial        # Initial -> Cross-reviewed -> Revised -> Evidence-checked
+Status: unstarted      # unstarted -> Initial -> Cross-reviewed -> Revised -> Evidence-checked
 ---
 
 # Claude REVIEW — <주제>

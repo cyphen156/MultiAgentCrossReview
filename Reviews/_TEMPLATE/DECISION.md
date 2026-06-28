@@ -2,7 +2,7 @@
 Review-ID: <id>
 Author: User
 Baseline: <commit=...>
-Status: Decided        # 단일 가변 파일. 결정이 바뀌면 덮어쓰고 커밋(이력=git). Decision 파일을 쌓지 않는다.
+Status: Pending        # Pending -> Decided. 단일 가변 파일 — 덮어쓰고 커밋(이력=git). Decision 파일을 쌓지 않는다.
 ---
 
 # DECISION — <주제>
