@@ -8,6 +8,12 @@
 # 단, Projects/ 직속의 등록 매니페스트(projects.json 등)는 추적해 자동화에 쓴다.
 /Projects/*/
 
+# 옛 루트 미러 잔재 방어: 미러는 Projects/<name>/baseline 으로 이동했다.
+# 루트엔 다시 생기지 않지만, 다른 머신에 남은 옛 레이아웃 미러가 추적되는 footgun을 막는다.
+/CyphenEngine/
+/Modules/
+/CyphenBuild.props
+
 # Local build and scratch artifacts
 /BuildArtifacts/
 /Temp/
