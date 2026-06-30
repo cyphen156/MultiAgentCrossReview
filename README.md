@@ -43,7 +43,8 @@ Codex/ROLE.md               Codex 역할
 Packages/RuleSync/          private markdown rule sync engine (public package)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
-  projects.json             등록부(추적) — sync 대상 프로젝트 목록
+  projects.example.json     공개 예시 등록부
+  projects.json             로컬 등록부(gitignore) — sync 대상 프로젝트 목록
   <name>/
     RULES.md                프로젝트별 규칙 (로컬 전용·gitignore)
     baseline/               읽기전용 미러 (sync가 채움)
@@ -61,7 +62,7 @@ Reviews/                    검토 기록
 sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 ```
 
-`Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외하고, 등록부 `Projects/projects.json`만 추적합니다. 대상 프로젝트 코드는 공개 저장소에 커밋하지 않습니다.
+`Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외합니다. 실제 등록부 `Projects/projects.json`도 로컬 전용이며, 공개 저장소에는 `Projects/projects.example.json`만 둡니다. 대상 프로젝트 이름, 절대경로, 코드는 공개 저장소에 커밋하지 않습니다.
 
 ## 규칙 계층
 
@@ -109,12 +110,12 @@ Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\r
 
 RuleSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다. 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
 
-공개 예시 vault 구조는 `Packages/RuleSync/examples/MultiAgentPrivateRulesSync/`에 있습니다. 실제 개인 룰 저장소는 이 예시를 참고해 별도 private repository로 만듭니다.
+공개 예시 vault 구조는 별도 MIT 공개 repo [MultiAgentPrivateRulesSync](https://github.com/cyphen156/MultiAgentPrivateRulesSync)로 제공합니다. 실제 개인 룰 저장소는 이 예시를 참고해 별도 private repository로 만듭니다.
 
 ## 빠른 시작
 
 ```powershell
-# 1) 대상 프로젝트 등록 (Projects/projects.json)
+# 1) 대상 프로젝트 등록 (Projects/projects.example.json -> Projects/projects.json 로 복사 후 로컬 경로 수정)
 #    { "projects": [ { "name": "CyphenEngine", "sourceRepoRoot": "C:\\Project\\CyphenEngine", "engineSubdir": "CyphenEngine" } ] }
 
 # 2) 등록 프로젝트 동기화 — baseline 채우고 edit/Claud·edit/Codex 시드

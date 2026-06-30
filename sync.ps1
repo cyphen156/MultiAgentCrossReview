@@ -24,7 +24,7 @@ $projectsDir  = Join-Path $repoRoot 'Projects'
 $manifestPath = Join-Path $projectsDir 'projects.json'
 
 if (-not (Test-Path $manifestPath)) {
-    Write-Error "프로젝트 매니페스트가 없습니다: $manifestPath"
+    Write-Error "프로젝트 매니페스트가 없습니다: $manifestPath`nProjects\projects.example.json 을 Projects\projects.json 으로 복사한 뒤 로컬 경로를 채우세요."
     exit 1
 }
 

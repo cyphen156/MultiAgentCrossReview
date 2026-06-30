@@ -87,8 +87,9 @@ Do not commit actual vault paths or private markdown rules.
 
 ## Example Private Vault
 
-See `examples/MultiAgentPrivateRulesSync/` for a public MIT example of the private
-vault layout. Use it as a shape for your own private repository.
+See [MultiAgentPrivateRulesSync](https://github.com/cyphen156/MultiAgentPrivateRulesSync)
+for a public MIT example of the private vault layout. Use it as a shape for your
+own private repository.
 
 ## Conflict Policy
 

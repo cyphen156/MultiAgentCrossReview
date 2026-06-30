@@ -5,8 +5,10 @@
 /.vs/
 
 # Projects/ 하위 프로젝트 폴더(미러 baseline·편집본·테스트 산출물)는 로컬 전용.
-# 단, Projects/ 직속의 등록 매니페스트(projects.json 등)는 추적해 자동화에 쓴다.
+# 단, 공개 예시 매니페스트만 추적한다. 실제 Projects/projects.json 은 로컬 전용.
 /Projects/*/
+/Projects/projects.json
+!/Projects/projects.example.json
 
 # 옛 루트 미러 잔재 방어: 미러는 Projects/<name>/baseline 으로 이동했다.
 # 루트엔 다시 생기지 않지만, 다른 머신에 남은 옛 레이아웃 미러가 추적되는 footgun을 막는다.
