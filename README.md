@@ -133,7 +133,7 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 선택 섹션은 커밋 성격이나 사용자 명시 지시에 따라 제거, 추가, 이름 변경될 수 있습니다.
 
 프로젝트별 DevLog는 작성 시각만으로 범위를 정하지 않습니다.  
-각 프로젝트 룰이 정한 방식으로 이전 DevLog 이후의 대상 커밋 범위를 산정하며, CyphenEngine은 이전 DevLog auto-generated commit 이후부터 마지막 대상 커밋까지의 포맷 커밋을 검토하고 DevLog auto-generated commit 자체는 요약 범위에서 제외합니다.
+각 프로젝트 룰이 이전 DevLog 이후의 대상 커밋 범위를 정합니다(예: auto-generated DevLog 커밋 자체는 요약 범위에서 제외).
 
 ## RuleSync
 
@@ -162,6 +162,15 @@ Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\r
 .\Packages\RuleSync\rulesync.ps1 -Direction Pull   # private vault -> 현재 워크트리
 .\Packages\RuleSync\rulesync.ps1 -Direction Push   # 현재 워크트리 -> private vault
 ```
+
+git pull/push까지 한 번에 처리하려면 래퍼를 씁니다(프로젝트 sync처럼 단순):
+
+```powershell
+.\Packages\RuleSync\Start.ps1    # vault git pull -> 워크트리로 materialize
+.\Packages\RuleSync\Finish.ps1   # 워크트리 룰 -> vault commit/push
+```
+
+작업표시줄/더블클릭용 `Start.cmd`·`Finish.cmd`도 있습니다. vault에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
 
 RuleSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다.  
 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
