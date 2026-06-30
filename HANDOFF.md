@@ -1,42 +1,63 @@
-# HANDOFF — 규칙 계층 분리 인계 (Codex 이어받기용)
+# HANDOFF — 현재 구조 + 새 머신 부트스트랩
 
-> 작성: Claude · 2026-06-30. **인계용 임시 문서.** 사용자가 한 번 더 수정 예정이며, 토큰 한계로 Codex가 이어받는다.
+> 갱신: 2026-06-30. 여러 머신에서 이 워크벤치를 이어 쓸 때의 현재 구조와 새 머신 설정 절차.
+> 공개 레포 문서이므로 사용자의 private vault 실명·절대경로·토큰은 적지 않는다.
 
-## 이번에 한 일
+## 현재 상태 (요약)
 
-규칙이 한 파일(`Common/SHARED_RULES.md`)에 워크벤치·프로젝트·개인 규칙으로 섞여 있던 것을 **3층으로 분리**했다.
+- 규칙 3층: **범용 워크벤치(공개)** / **프로젝트별 `Projects/<name>/RULES.md`(로컬)** / **개인 `UserSettings/`(로컬)**.
+- 작고 항상 읽는 라우터 `Common/ROUTING.md`가 세 층 진입점을 분리. 진입점(`AGENTS.md`/`CLAUDE.md`/`Claud`·`Codex/ROLE.md`)은 얇은 포인터.
+- 커밋/DevLog **read-before-write 게이트**: 대화형 초안은 활성 프로젝트 `RULES.md`가 없으면 기억으로 쓰지 않고 누락을 보고(fail-closed). 헤드리스 `run-review.ps1`은 경고 후 generic으로 진행(fail-open).
+- `Packages/RuleSync/` = 로컬 룰(`UserSettings/**/*.md`, `Projects/<name>/RULES.md`)을 사용자 private rules vault와 동기화하는 **공개 엔진**.
+  - 단순 사용: `Start.ps1`(pull→materialize) / `Finish.ps1`(워크트리→vault commit/push). 저수준: `rulesync.ps1 -Direction Pull|Push`.
+- 세션(대화 JSONL) 동기화는 **별도 공개 도구 `AgentSessionSync`**(선택).
+- **RuleSync·세션 동기화는 둘 다 선택 기능.** 단일 머신만 쓰면 불필요.
 
-- `Common/SHARED_RULES.md` — **범용 워크벤치 규칙만** 남김: 독립판단→교차검증 절차(§1), 범용 커밋 본문 구조(변경요약/상세/검증/다음작업, §2), DevLog 범용 원칙(§3), Reviews 운영(§4).
-- `Common/PROJECT_RULES.template.md` (신규·공개) — 새 프로젝트 등록 시 복사용 템플릿.
-- `Common/ROUTING.md` (신규·공개) — 작고 항상 읽는 라우터. 워크벤치/프로젝트/개인 설정 진입점을 분리.
-- `Projects/<name>/RULES.md` (로컬·gitignore) — 프로젝트별: 코드스타일·**인코딩·줄바꿈**·아키텍처·DevLog 경로·커밋 제목·커밋 본문 선택 구성·DevLog 범위 산정.
-- `UserSettings/` (로컬·하위 파일 ignore, `README.md`만 공개) — 개인 설정(존댓말·no-yes-man 등).
-- `Reviews/run-review.ps1` — `Get-ProjectName` 추가, `Build-Prompt`가 활성 프로젝트 `RULES.md`를 `[프로젝트 규칙]` 블록으로 주입. 없으면 `Write-Warning` + 플레이스홀더(증발 방지).
-- 진입점 4개(AGENTS / CLAUDE / Claud·Codex ROLE) + `README.md` 갱신, `LICENSE`(MIT, Cyphen) 추가.
-- 커밋/DevLog read-before-write 게이트 추가: 대화형 초안 작성은 프로젝트 `RULES.md`가 없으면 기억으로 작성하지 않고 누락을 보고한다.
-- CyphenEngine 로컬 룰 복원: 커밋 제목 `#N_M [Category] 한글 제목`, 열린 선택 본문 구성, DevLog auto-generated commit 제외, 이전 DevLog 이후 포맷 커밋 범위 검토.
+## 레포 구성
 
-## 검증됨
+| 종류 | 공개/비공개 | 역할 |
+|---|---|---|
+| `MultiAgentCrossReview` | 공개 MIT | 워크벤치 엔진·범용 규칙·템플릿·RuleSync·Reviews |
+| `MultiAgentPrivateRulesSync` | 공개 MIT | private rules vault 예시 구조 |
+| `AgentSessionSync` | 공개 MIT | 세션 동기화 도구(템플릿) |
+| 사용자 private rules vault | 비공개 | 실제 `UserSettings/`·`Projects/<name>/RULES.md` (RuleSync 대상) |
+| 사용자 private session vault | 비공개 | 실제 세션 JSONL (AgentSessionSync 대상) |
 
-- `run-review.ps1` 파서 OK(PS5.1), **BOM 유지**. 마크다운에는 워크벤치 전역 LF/no-BOM 정책을 적용하지 않는다.
-- `git check-ignore`: `UserSettings/<private-file>`·`Projects/CyphenEngine/RULES.md` ignore 확인. 템플릿·`SHARED_RULES.md`는 추적.
-- `Projects/CyphenEngine/RULES.md`: BOM 없음, LF, CRLF 없음. 이 파일은 로컬 프로젝트 룰이라 gitignore 대상이다.
+## 새 머신 부트스트랩 (머신별 로컬 — 동기화되지 않음)
 
-## ⚠ 다른 머신에서 주의 (로컬 파일은 이 커밋에 없음)
+경로가 머신마다 달라 아래는 새 머신에서 직접 만든다.
 
-`Projects/CyphenEngine/RULES.md` 와 `UserSettings/` 하위 개인 설정 파일은 **gitignore라 커밋에 포함되지 않는다.** 다른 머신엔 직접 만들어야 한다.
+1. 공개 레포 clone + 사용자 private vault 2개(rules / session) clone.
+2. `Packages/RuleSync/rulesync.config.psd1` 생성(`rulesync.config.example.psd1` 복사) → `VaultRoot`를 이 머신의 rules vault clone 경로로. (gitignore)
+3. `Projects/projects.json` 생성(`projects.example.json` 복사) → 이 머신의 실제 `sourceRepoRoot` 경로로 수정. (gitignore)
+4. 세션 동기화를 쓰면 `AgentSessionSync.config.psd1` 생성(`Initialize-AgentSessionSync.ps1`). (gitignore)
+5. 원본 대상 프로젝트가 이 머신 경로에 존재해야 `sync.ps1`이 baseline을 재생성.
 
-- `Projects/CyphenEngine/RULES.md` — 현재 머신에는 복원되어 있지만 gitignore라 커밋되지 않는다. 다른 머신에서는 `Common/PROJECT_RULES.template.md`를 복사한 뒤 CyphenEngine 코드스타일·아키텍처·커밋 포맷·DevLog 범위 규칙을 채워야 한다.
-- `UserSettings/preferences.md` 같은 로컬 파일 — 어조=한국어 존댓말, 검토 태도=반사적 동의 금지(no-yes-man)·근거 검증, 상태=현재 합의 신뢰·옛 기록 임의 복원 금지.
+그다음:
 
-## 남은 일 / 다음
+```powershell
+.\Packages\RuleSync\Start.ps1   # private rules vault -> 워크트리 materialize (룰 복원)
+.\sync.ps1                       # 원본 프로젝트 -> baseline/edit 미러
+```
 
-- (이전 인계에서 넘어온, **아직 미확인**) `sync.ps1` 1회 실행으로 `Projects/CyphenEngine/baseline/.baseline` 기준커밋 마커 생성, `run-review.ps1` 실제 CLI 호출 end-to-end 1바퀴 검증. — 상태 미확정이니 사용자에게 확인 후 진행.
+작업 종료 시 룰 변경을 vault로 돌릴 때:
+
+```powershell
+.\Packages\RuleSync\Finish.ps1  # 워크트리 룰 -> private rules vault commit/push
+```
+
+vault에 원격이 없으면 `Start.ps1`/`Finish.ps1`에 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화.
+
+## 검증 상태 (2026-06-30)
+
+- 테스트 통과: RuleSync 라운드트립·충돌가드·시크릿스캔, `Start/Finish -DryRun`, `run-review.ps1 -DryRun`, AgentSessionSync 2-clone 왕복·AgentLauncher·SessionSecrets.
+- 5개 레포 전부 `main` 원격 동기.
+- **아직 미실행**: 실제 `codex`/`claude` CLI를 부르는 `run-review.ps1` end-to-end 1바퀴(현재 `-DryRun`까지만).
 
 ## 깨지면 안 되는 것
 
-- `run-review.ps1`·`sync.ps1` = **UTF-8 BOM** 의도됨. 벗기면 PS5.1 한글 파서가 깨진다.
-- 줄바꿈/인코딩은 **프로젝트 룰**(워크벤치 전역 정책 아님). 특히 LF/no-BOM은 CyphenEngine 같은 대상 프로젝트 규칙이며, 워크벤치 마크다운 전역 규칙으로 끌어오지 않는다.
-- 대화형 커밋/DevLog 초안 작성은 프로젝트 룰 누락 시 fail-closed. 단, `run-review.ps1` 헤드리스 리뷰 오케스트레이터는 프로젝트 룰 누락 시 경고 후 generic 룰로 계속하는 fail-open 경로다.
-- 2026-06-28 이전 5개 토픽은 레거시 동결(옛 번호파일). 마이그레이션하지 않는다.
-- 원본 `C:\Project\CyphenEngine`은 읽기만. 미러는 `Projects/CyphenEngine/baseline/`.
+- 한글 포함 워크벤치 PowerShell(`sync.ps1`, `Reviews/run-review.ps1`, `rulesync.ps1`)은 **UTF-8 BOM** 유지 — PS 5.1 한글 파서 보호. 워크벤치 마크다운은 **CRLF / no-BOM**.
+- `LF`/`no-BOM`은 대상 프로젝트(예: CyphenEngine) 소스/DevLog 규칙이지 워크벤치 규칙이 아니다 — 워크벤치 md에 끌어오지 않는다.
+- RuleSync 동기화 대상은 `UserSettings/**/*.md`·`Projects/<name>/RULES.md`만. **`README.md`·`baseline/**`·`edit/**`·시크릿·세션 JSONL은 제외.** 충돌 시 `.bak` 백업+경고+skip, `-Force`일 때만 덮어쓴다.
+- private vault 실명·절대경로·토큰·세션 JSONL은 공개 레포에 커밋하지 않는다. 대상 프로젝트 원본은 읽기 전용(미러는 `Projects/<name>/baseline/`).
+- 2026-06-28 이전 `Reviews/` 토픽은 레거시(옛 번호파일) 동결.
