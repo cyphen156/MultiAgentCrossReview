@@ -25,6 +25,10 @@ UserSettings/machines/<name>.md   # machine-specific notes
 should load it before project-specific rules. Do not gate it behind tone/style
 keywords.
 
+`MultiAgentRulesVault` is the SSOT for private markdown rules. Files under this
+directory are materialized working copies. Use `Packages/RuleSync/rulesync.ps1`
+to pull them from or push them to the private vault.
+
 Do not put public workbench rules here. Put public rules in `Common/SHARED_RULES.md`
 or `Reviews/README.md`.
 

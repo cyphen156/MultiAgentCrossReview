@@ -40,6 +40,7 @@ Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
 UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
+Packages/RuleSync/          private markdown rule sync engine (public package)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
   projects.json             등록부(추적) — sync 대상 프로젝트 목록
@@ -79,6 +80,26 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 프로젝트별 커밋 본문에서 `검증`, `다음 작업`은 자주 쓰는 선택 섹션일 뿐 닫힌 목록이 아닙니다. 선택 섹션은 커밋 성격이나 사용자 명시 지시에 따라 제거, 추가, 이름 변경될 수 있습니다.
 
 프로젝트별 DevLog는 작성 시각만으로 범위를 정하지 않습니다. 각 프로젝트 룰이 정한 방식으로 이전 DevLog 이후의 대상 커밋 범위를 산정하며, CyphenEngine은 이전 DevLog auto-generated commit 이후부터 마지막 대상 커밋까지의 포맷 커밋을 검토하고 DevLog auto-generated commit 자체는 요약 범위에서 제외합니다.
+
+## RuleSync
+
+`UserSettings/*.md`와 `Projects/<name>/RULES.md`는 공개 저장소에 커밋하지 않는 로컬 룰입니다. 여러 머신에서 이 파일을 이어 쓰려면 `Packages/RuleSync/`를 사용해 별도의 private `MultiAgentRulesVault`와 동기화합니다.
+
+원칙:
+
+- `MultiAgentRulesVault` = private markdown rule SSOT.
+- 이 워크트리의 `UserSettings/`와 `Projects/<name>/RULES.md` = 에이전트가 실제로 읽는 materialized copy.
+- Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
+- `Projects/<name>/baseline/**`와 `Projects/<name>/edit/**`는 RuleSync 대상이 아닙니다.
+
+예:
+
+```powershell
+.\Packages\RuleSync\rulesync.ps1 -Direction Pull -VaultRoot C:\MultiAgentRulesVault
+.\Packages\RuleSync\rulesync.ps1 -Direction Push -VaultRoot C:\MultiAgentRulesVault
+```
+
+RuleSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다. 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
 
 ## 빠른 시작
 
