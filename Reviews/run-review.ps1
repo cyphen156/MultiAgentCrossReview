@@ -118,8 +118,8 @@ function Build-Prompt($step) {
             $projRules = Read-IfExists $projPath
         }
         else {
-            Write-Warning "프로젝트 규칙 없음: $projPath — Common\PROJECT_RULES.template.md 를 복사해 채우세요. 범용 규칙만으로 진행."
-            $projRules = "(활성 프로젝트 '$projName' 의 RULES.md 가 없습니다. 범용 규칙만 적용됩니다.)"
+            Write-Warning "Project rules not found: $projPath — copy Common\PROJECT_RULES.template.md and fill it when project-specific rules are needed. Continuing with generic rules only."
+            $projRules = "(The active project '$projName' has no RULES.md. Generic workbench rules only.)"
         }
     }
     $readmeTxt = Read-IfExists $readme
@@ -145,27 +145,27 @@ function Build-Prompt($step) {
     @"
 $roleDesc
 
-[공유 규칙 — 범용 워크벤치]
+[Shared rules - generic workbench]
 $rules
 
-[프로젝트 규칙 — $projName]
+[Project rules - $projName]
 $projRules
 
-[검토 주제 / README]
+[Review topic / README]
 $topicBlock
 $otherBlock
 
-[작업]
-- 단계: $($step.Phase)  (이 출력은 REVIEW.md 의 "$($step.Title)" 섹션이 된다)
-- initial: 상대 답을 보지 않고 질문에 대한 독립 결론을 작성한다.
-- cross-review: 자신의 초기판단과 상대 REVIEW 를 비교해 상대 판단을 검증한다.
-- revision: 받은 교차검증을 반영해 기존 결론을 유지하거나 수정한다.
-- evidence: 결론 근거가 baseline 미러(Projects/<name>/baseline) / DevLog 에 실제 존재하는지 재확인한다.
-- 위 자료와 인용된 baseline 파일만 읽기전용으로 최소 확인한다. 어떤 파일도 수정하지 않는다(기록은 스크립트가 한다).
-- 근거는 '파일경로 : 심볼' + DevLog 날짜로 명시한다. 출력은 마크다운 본문만(섹션 제목 줄은 스크립트가 붙인다).
-- initial/revision 마지막 줄: 'Position: KEEP' 또는 'Position: REVISE'.
-- cross-review 마지막 줄: 'Verdict: AGREE' 또는 'Verdict: OBJECT'.
-- evidence 마지막 줄: 'Evidence-Status: CONFIRMED' 또는 'Evidence-Status: INSUFFICIENT'.
+[Task]
+- Phase: $($step.Phase). This output becomes the "$($step.Title)" section in REVIEW.md.
+- initial: write an independent conclusion without reading the other agent's answer.
+- cross-review: compare your initial judgment with the other REVIEW and evaluate the other judgment.
+- revision: keep or revise your conclusion after considering the received cross-review.
+- evidence: verify whether the conclusion's evidence exists in the baseline mirror (`Projects/<name>/baseline`) or DevLog.
+- Read only the provided material and the cited baseline files. Do not modify any file; this script writes the record.
+- Cite evidence as 'file path : symbol' plus the DevLog date when relevant. Output markdown body only; the script adds the section heading.
+- End initial/revision with exactly one line: `Position: KEEP` or `Position: REVISE`.
+- End cross-review with exactly one line: `Verdict: AGREE` or `Verdict: OBJECT`.
+- End evidence with exactly one line: `Evidence-Status: CONFIRMED` or `Evidence-Status: INSUFFICIENT`.
 "@
 }
 

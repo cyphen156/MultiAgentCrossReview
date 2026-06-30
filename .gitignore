@@ -24,5 +24,7 @@
 # Optional machine-specific configuration
 /local.settings.psd1
 
-# 개인 선호 등 로컬 전용 마크다운 — 공개 레포엔 포함하지 않음 (예: USER_PREFS.local.md)
-*.local.md
+# Local user settings. Keep only the public guide tracked.
+/UserSettings/**
+!/UserSettings/
+!/UserSettings/README.md

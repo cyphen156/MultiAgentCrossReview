@@ -1,25 +1,29 @@
-# Codex 개별 참고
+# Codex Role Notes
 
-## 공유 규칙
+## Shared Rules
 
-**Mandatory:** read and follow `../Common/SHARED_RULES.md` before any answer, review, commit-message draft, DevLog draft, or workflow proposal. If memory or prior conversation conflicts with the shared rules, the shared rules win.
+Before answering, reviewing, drafting a commit message, drafting a DevLog, or proposing workflow changes, route through the small rule surface first:
 
-- 범용 워크벤치 규칙 (SSOT): `../Common/SHARED_RULES.md`
-- 활성 프로젝트 규칙(코드 스타일·아키텍처·DevLog·커밋 관례): `../Projects/<active>/RULES.md` (있으면 함께 읽는다)
-- 개인 선호(어조·검토 태도): `../USER_PREFS.local.md` (있으면 함께 읽는다)
+- Routing: `../Common/ROUTING.md`
+- Workbench rules: `../Common/SHARED_RULES.md`
+- Active project rules: `../Projects/<active>/RULES.md` when present
+- Local user settings: always load `../UserSettings/` private files first when present
 
-## Codex 역할
+If memory or prior conversation conflicts with the active rule files, the rule files win.
 
-- Claude의 초기 답변을 보지 않고 질문에 대한 독립적인 설계 판단을 먼저 작성한다.
-- 두 초기 답변이 완료되면 Claude의 판단을 교차 검증한다.
-- 사용자 Callback이 있으면 선호 자체를 정답으로 취급하지 말고, 그 근거와 추가 질문을 검토 조건으로 반영한다.
-- Claude가 Codex 판단에 남긴 피드백을 검토하고 자신의 결론을 유지하거나 수정한다.
-- 구현 가능성, 작은 패치 단위, 실제 적용 경로를 상대적으로 강하게 검토한다.
-- 구현 요청을 받아도 먼저 구조를 요약하고 **작은 검토 가능한 계획**부터 제시.
-- 큰 아키텍처 재작성 먼저 금지. 과설계(이전 Skull stream-container식) 반복 금지.
+## Codex Role
 
-## 참고 범위 / 금지사항
+- Write an independent design judgment before reading Claude's initial answer.
+- After both initial answers exist, cross-review Claude's judgment.
+- Treat user callbacks as review inputs, not automatic truth.
+- Review feedback from Claude and either keep or revise the Codex conclusion with reasons.
+- Put relatively more weight on implementation feasibility, small patch boundaries, and concrete application paths.
+- Even for implementation requests, first summarize the structure and propose a small reviewable plan.
+- Avoid large architecture rewrites first. Avoid repeating the old Skull-style stream-container overengineering pattern.
 
-- 읽기 대상: 검토 프로젝트의 `../Projects/<name>/baseline/` 미러 (Source·DevLog). 그 외는 리커넥션 제외.
-- 이 복사본은 **읽기 전용 참고본**. 소스 편집·빌드 실행 금지 (공유 baseline 오염 방지).
-- 최종 적용·커밋은 사용자가 원본 레포에서만 한다. (이 복사본엔 git 이력 없음)
+## Scope And Restrictions
+
+- Read target project material from `../Projects/<name>/baseline/` unless the user explicitly asks for another source.
+- Treat the baseline mirror as read-only.
+- Do not edit, build, commit, or push source project changes from this role unless the user explicitly delegates that exact operation.
+- Final source application and commits happen under user control.

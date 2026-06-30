@@ -37,7 +37,7 @@ Codex 독립 판단 + Claude 독립 판단   (서로 안 봄)
 CLAUDE.md / AGENTS.md       각 에이전트 진입점 (얇은 포인터)
 Common/SHARED_RULES.md      범용 워크벤치 규칙 (SSOT)
 Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
-USER_PREFS.local.md         개인 선호 (로컬 전용·gitignore)
+UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 
@@ -70,9 +70,15 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 |---|---|---|---|
 | 범용 워크벤치 | `Common/SHARED_RULES.md`, `Reviews/README.md` | 공개 | 독립판단→교차검증 절차, 범용 커밋 본문 구조, Reviews 운영 |
 | 프로젝트별 | `Projects/<name>/RULES.md` (템플릿 `Common/PROJECT_RULES.template.md`) | 로컬 | 코드 스타일·인코딩·줄바꿈·아키텍처·DevLog 경로·커밋 제목 관례 |
-| 개인 선호 | `USER_PREFS.local.md` | 로컬 | 어조·검토 태도 등 사용자 선호 |
+| 개인 설정 | `UserSettings/` (안내 `UserSettings/README.md`) | 로컬 | 어조·검토 태도·사적 워크플로 등 사용자 설정 |
 
-`run-review.ps1`은 활성 프로젝트(`projects.json` 첫 항목 또는 `-Project`)의 `RULES.md`를 범용 규칙과 함께 헤드리스 프롬프트에 주입합니다. `RULES.md`가 없으면 경고 후 범용 규칙만으로 진행합니다.
+`run-review.ps1`은 활성 프로젝트(`projects.json` 첫 항목 또는 `-Project`)의 `RULES.md`를 범용 규칙과 함께 헤드리스 프롬프트에 주입합니다. `RULES.md`가 없으면 경고 후 범용 규칙만으로 진행합니다. 즉, 헤드리스 리뷰 오케스트레이터는 누락된 프로젝트 룰에 대해 **fail-open**입니다.
+
+커밋 메시지나 DevLog처럼 프로젝트별 형식이 있는 산출물은 활성 프로젝트의 `Projects/<name>/RULES.md`를 먼저 읽은 뒤 작성합니다. 해당 파일이 없으면 기억으로 작성하지 않고, 누락된 프로젝트 룰을 먼저 보고합니다. 즉, 대화형 커밋/DevLog 초안 작성은 **fail-closed**입니다.
+
+프로젝트별 커밋 본문에서 `검증`, `다음 작업`은 자주 쓰는 선택 섹션일 뿐 닫힌 목록이 아닙니다. 선택 섹션은 커밋 성격이나 사용자 명시 지시에 따라 제거, 추가, 이름 변경될 수 있습니다.
+
+프로젝트별 DevLog는 작성 시각만으로 범위를 정하지 않습니다. 각 프로젝트 룰이 정한 방식으로 이전 DevLog 이후의 대상 커밋 범위를 산정하며, CyphenEngine은 이전 DevLog auto-generated commit 이후부터 마지막 대상 커밋까지의 포맷 커밋을 검토하고 DevLog auto-generated commit 자체는 요약 범위에서 제외합니다.
 
 ## 빠른 시작
 

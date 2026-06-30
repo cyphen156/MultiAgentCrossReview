@@ -1,14 +1,27 @@
-# AGENTS.md — MultiAgentCrossReview
+# AGENTS.md - MultiAgentCrossReview
 
-진입점 파일입니다. 규칙 본문은 여기에 중복하지 않고 단일 출처(SSOT)를 가리킵니다.
+Entry point for Codex. Keep this file small. It is a routing surface, not the full rulebook.
 
-- **Mandatory first step:** before answering, reviewing, drafting commits/DevLogs, or proposing workflow changes, read and follow `Common/SHARED_RULES.md`.
-- If any local habit, memory, or prior conversation conflicts with `Common/SHARED_RULES.md`, the shared rules win.
+Always apply these invariants:
 
-- 공유 검토 규칙 (범용 SSOT): `Common/SHARED_RULES.md`
-- 활성 프로젝트 규칙(로컬): `Projects/<active>/RULES.md` (있으면 함께 · 템플릿 `Common/PROJECT_RULES.template.md`)
-- 개인 선호(로컬): `USER_PREFS.local.md` (있으면 함께)
-- 기록 형식·상태 흐름·운영 원칙 (SSOT): `Reviews/README.md`
-- Codex 역할: `Codex/ROLE.md`
-- Claude 역할 참고: `Claud/ROLE.md`
-- 프로젝트 개요: `README.md`
+- Public workbench rules and private user settings outrank project-specific rules.
+- Do not modify the source project repository from this workbench unless the user explicitly asks for that exact operation.
+- Keep public review/process artifacts separate from private raw session data and local user settings.
+- For tasks that depend on repository rules, inspect the relevant rule file before drafting conclusions.
+
+Routing:
+
+- General routing and trigger table: `Common/ROUTING.md`
+- Workbench process rules: `Common/SHARED_RULES.md`
+- Review state and record format: `Reviews/README.md`
+- Active project rules: `Projects/<active>/RULES.md` if present; template: `Common/PROJECT_RULES.template.md`
+- Local user settings: always load `UserSettings/` private files first if present; guide: `UserSettings/README.md`
+- Codex role notes: `Codex/ROLE.md`
+- Claude role reference: `Claud/ROLE.md`
+- Project overview: `README.md`
+
+Read-before-write gates:
+
+- Before drafting a project commit message, read the active `Projects/<active>/RULES.md` first, then `Common/SHARED_RULES.md`.
+- Before drafting or editing a project DevLog, read the active `Projects/<active>/RULES.md` first.
+- If the active project rule file is missing, do not draft the commit message or DevLog from memory. Report the missing rule file first.

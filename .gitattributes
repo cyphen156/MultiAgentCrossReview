@@ -1,13 +1,15 @@
-# Normalize all text files to LF in the repository.
-# Working tree line endings stay native per each machine's core.autocrlf.
-* text=auto
+# MultiAgentCrossReview is a Windows/PowerShell-facing workbench.
+# Do not apply CyphenEngine source LF/no-BOM policy to this repository.
+# Project-specific line-ending and encoding policy belongs in Projects/<name>/RULES.md.
 
-*.md   text
-*.txt  text
-*.ps1  text
+# Keep executable PowerShell/command entry points Windows-friendly.
+.gitattributes text eol=crlf
+.gitignore     text eol=crlf
+*.md   text eol=crlf
+*.txt  text eol=crlf
+*.json text eol=crlf
+*.ps1  text eol=crlf
 *.cmd  text eol=crlf
-*.patch text
-*.json text
 
 # Crash dumps / binaries — never touch
 *.stackdump binary
