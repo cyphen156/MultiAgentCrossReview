@@ -66,7 +66,7 @@ try {
     $secretWorktree = Join-Path $root 'secret-worktree'
     $secretVault = Join-Path $root 'secret-vault'
     New-Item -ItemType Directory -Force -Path (Join-Path $secretWorktree 'UserSettings') | Out-Null
-    'sk-ant-abcdefghijklmnopqrstuvwxyz123456' | Set-Content -LiteralPath (Join-Path $secretWorktree 'UserSettings\preferences.md') -Encoding UTF8
+    (('sk-ant-' + 'api03-') + ('a' * 64)) | Set-Content -LiteralPath (Join-Path $secretWorktree 'UserSettings\preferences.md') -Encoding UTF8
     $secretBlocked = $false
     try {
         & $script -Direction Push -WorktreeRoot $secretWorktree -VaultRoot $secretVault
