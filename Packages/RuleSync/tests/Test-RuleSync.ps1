@@ -76,6 +76,41 @@ try {
     }
     if (-not $secretBlocked) { throw 'Secret-like content was not blocked.' }
 
+    $wrapperRemote = Join-Path $root 'wrapper-remote.git'
+    $wrapperVault = Join-Path $root 'wrapper-vault'
+    $wrapperWorktree = Join-Path $root 'wrapper-worktree'
+    $wrapperReceiver = Join-Path $root 'wrapper-receiver'
+    $startScript = Resolve-Path (Join-Path $PSScriptRoot '..\Start.ps1')
+    $finishScript = Resolve-Path (Join-Path $PSScriptRoot '..\Finish.ps1')
+
+    & git init --bare $wrapperRemote | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Wrapper test remote init failed.' }
+    & git clone $wrapperRemote $wrapperVault | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Wrapper test vault clone failed.' }
+    & git -C $wrapperVault config user.email 'rulesync-test@example.invalid'
+    & git -C $wrapperVault config user.name 'RuleSync Test'
+    New-Item -ItemType Directory -Force -Path (Join-Path $wrapperVault 'UserSettings') | Out-Null
+    'initial prefs' | Set-Content -LiteralPath (Join-Path $wrapperVault 'UserSettings\preferences.md') -Encoding UTF8
+    & git -C $wrapperVault add UserSettings
+    & git -C $wrapperVault commit -m 'seed rules' | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Wrapper test seed commit failed.' }
+    & git -C $wrapperVault push origin master | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Wrapper test seed push failed.' }
+
+    New-Item -ItemType Directory -Force -Path (Join-Path $wrapperWorktree 'UserSettings') | Out-Null
+    'updated prefs from worktree' | Set-Content -LiteralPath (Join-Path $wrapperWorktree 'UserSettings\preferences.md') -Encoding UTF8
+    & $finishScript -VaultRoot $wrapperVault -WorktreeRoot $wrapperWorktree -CommitMessage 'rulesync test update'
+    if ($LASTEXITCODE -ne 0) { throw 'Finish wrapper failed.' }
+
+    $wrapperLog = & git -C $wrapperVault log -1 --pretty=%s
+    if ($wrapperLog -ne 'rulesync test update') { throw 'Finish wrapper did not commit rule update.' }
+
+    New-Item -ItemType Directory -Force -Path $wrapperReceiver | Out-Null
+    & $startScript -VaultRoot $wrapperVault -WorktreeRoot $wrapperReceiver
+    if ($LASTEXITCODE -ne 0) { throw 'Start wrapper failed.' }
+    $received = Get-Content -Raw -LiteralPath (Join-Path $wrapperReceiver 'UserSettings\preferences.md')
+    if ($received -notmatch 'updated prefs from worktree') { throw 'Start wrapper did not materialize pushed rules.' }
+
     Write-Host '[PASS] RuleSync round trip and conflict guard succeeded.' -ForegroundColor Green
 }
 finally {
