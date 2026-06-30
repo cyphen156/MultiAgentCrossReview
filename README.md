@@ -35,13 +35,16 @@ Codex 독립 판단 + Claude 독립 판단   (서로 안 봄)
 
 ```text
 CLAUDE.md / AGENTS.md       각 에이전트 진입점 (얇은 포인터)
-Common/SHARED_RULES.md      공유 규칙 (SSOT)
+Common/SHARED_RULES.md      범용 워크벤치 규칙 (SSOT)
+Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
+USER_PREFS.local.md         개인 선호 (로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
   projects.json             등록부(추적) — sync 대상 프로젝트 목록
   <name>/
+    RULES.md                프로젝트별 규칙 (로컬 전용·gitignore)
     baseline/               읽기전용 미러 (sync가 채움)
     edit/Claud, edit/Codex  에이전트별 코드 편집 사본
 
@@ -58,6 +61,18 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 ```
 
 `Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외하고, 등록부 `Projects/projects.json`만 추적합니다. 대상 프로젝트 코드는 공개 저장소에 커밋하지 않습니다.
+
+## 규칙 계층
+
+규칙은 성격에 따라 세 층으로 나눕니다. 공개 레포에는 **범용 규칙과 템플릿만** 들어가고, 특정 프로젝트·개인에 묶이는 규칙은 로컬 전용(gitignore)입니다.
+
+| 층 | 위치 | 공개 | 내용 |
+|---|---|---|---|
+| 범용 워크벤치 | `Common/SHARED_RULES.md`, `Reviews/README.md` | 공개 | 독립판단→교차검증 절차, 범용 커밋 본문 구조, Reviews 운영 |
+| 프로젝트별 | `Projects/<name>/RULES.md` (템플릿 `Common/PROJECT_RULES.template.md`) | 로컬 | 코드 스타일·인코딩·줄바꿈·아키텍처·DevLog 경로·커밋 제목 관례 |
+| 개인 선호 | `USER_PREFS.local.md` | 로컬 | 어조·검토 태도 등 사용자 선호 |
+
+`run-review.ps1`은 활성 프로젝트(`projects.json` 첫 항목 또는 `-Project`)의 `RULES.md`를 범용 규칙과 함께 헤드리스 프롬프트에 주입합니다. `RULES.md`가 없으면 경고 후 범용 규칙만으로 진행합니다.
 
 ## 빠른 시작
 
@@ -76,7 +91,7 @@ Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
 .\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Steps 8  # 끝까지
 ```
 
-자세한 기록 규칙은 `Reviews/README.md`, 공동 판단 규칙은 `Common/SHARED_RULES.md`를 참고합니다.
+자세한 기록 규칙은 `Reviews/README.md`, 범용 판단 규칙은 `Common/SHARED_RULES.md`, 프로젝트별 규칙은 `Projects/<name>/RULES.md`를 참고합니다.
 
 ## 코드 차이와 증거
 

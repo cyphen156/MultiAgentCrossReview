@@ -1,33 +1,39 @@
-# HANDOFF — 워크벤치 재편 인계 (Codex 이어받기용)
+# HANDOFF — 규칙 계층 분리 인계 (Codex 이어받기용)
 
-> 작성: Claude · 2026-06-29. **인계용 임시 문서** — Codex가 이어받아 아래 "남은 일"을 끝내면 삭제한다.
+> 작성: Claude · 2026-06-30. **인계용 임시 문서.** 사용자가 한 번 더 수정 예정이며, 토큰 한계로 Codex가 이어받는다.
 
-## 현재 상태
+## 이번에 한 일 (커밋됨)
 
-워크벤치 재편이 **main에 머지 완료**됐다 (커밋 `e91f701`, `a511174`, `9750e81`, `334e444`).
-구조 정의·오케스트레이터까지 끝났고, **실제 에이전트를 부르는 live 검증만 남았다.**
+규칙이 한 파일(`Common/SHARED_RULES.md`)에 워크벤치·프로젝트·개인 규칙으로 섞여 있던 것을 **3층으로 분리**했다.
 
-## 새 구조 (요약 — 상세는 `Reviews/README.md`, `Common/SHARED_RULES.md`)
+- `Common/SHARED_RULES.md` — **범용 워크벤치 규칙만** 남김: 독립판단→교차검증 절차(§1), 범용 커밋 본문 구조(변경요약/상세/검증/다음작업, §2), DevLog 범용 원칙(§3), Reviews 운영(§4).
+- `Common/PROJECT_RULES.template.md` (신규·공개) — 새 프로젝트 등록 시 복사용 템플릿.
+- `Projects/<name>/RULES.md` (로컬·gitignore) — 프로젝트별: 코드스타일·**인코딩·줄바꿈**·아키텍처·DevLog 경로·`#N_M [Category]` 커밋 제목.
+- `USER_PREFS.local.md` (로컬·`*.local.md` ignore) — 개인 선호(존댓말·no-yes-man 등).
+- `Reviews/run-review.ps1` — `Get-ProjectName` 추가, `Build-Prompt`가 활성 프로젝트 `RULES.md`를 `[프로젝트 규칙]` 블록으로 주입. 없으면 `Write-Warning` + 플레이스홀더(증발 방지).
+- 진입점 4개(AGENTS / CLAUDE / Claud·Codex ROLE) + `README.md` 갱신, `LICENSE`(MIT, Cyphen) 추가.
 
-- `Projects/<name>/`
-  - `baseline/` — 읽기전용 미러 (sync가 채움). `Projects/<name>/**` 는 gitignore.
-  - `edit/Claud`, `edit/Codex` — 에이전트별 코드 편집 사본. **Codex는 `edit/Codex`만 수정.**
-  - 등록부 `Projects/projects.json`(추적)에 `{name, sourceRepoRoot, engineSubdir}` 적으면 `sync.ps1`이 자동으로 따온다.
-- `Reviews/<id>/` — `README.md`(주제·기준커밋·범위·Callback) / `Claud/REVIEW.md` / `Codex/REVIEW.md` / `DECISION.md`.
-  **단일 가변 파일 + 이력=git.** 옛 번호파일·append-only·Supersedes 모델은 폐기.
-- `run-review.ps1` — 두 `REVIEW.md`의 Status로 다음 단계를 계산해 헤드리스로 1스텝씩 진행·커밋.
+## 검증됨
 
-## 남은 일 (Codex가 이어받을 것)
+- `run-review.ps1` 파서 OK(PS5.1), **BOM 유지**. 변경한 마크다운 전부 no-BOM.
+- `git check-ignore`: `USER_PREFS.local.md`·`Projects/CyphenEngine/RULES.md` ignore 확인. 템플릿·`SHARED_RULES.md`는 추적.
+- `-DryRun` 프롬프트에 `[프로젝트 규칙 — CyphenEngine]` 블록 + Allman/Skull/Core-OS 실내용 주입 확인.
 
-1. **`sync.ps1` 1회 실행** → `Projects/CyphenEngine/baseline/.baseline` 기준커밋 마커 생성 (현재 'unsynced').
-   - `.\sync.ps1` (projects.json 전체) 또는 `.\sync.ps1 -Project CyphenEngine`.
-2. **`run-review.ps1` end-to-end 첫 검증** — 지금까지 `-DryRun`(파싱·단계판정·프롬프트·봉인)까지만 검증됨.
-   실제 `codex exec` / `claude -p` 호출이 도는지, REVIEW.md 섹션 채우고 커밋하는지 1바퀴 확인.
-   - 스크래치 토픽: `Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Smoke -Recurse` → README 작성 → `.\Reviews\run-review.ps1 -Topic 2026-06-29_Smoke -Steps 8`.
+## ⚠ 다른 머신에서 주의 (로컬 파일은 이 커밋에 없음)
 
-## 주의 (놓치면 깨짐)
+`Projects/CyphenEngine/RULES.md` 와 `USER_PREFS.local.md` 는 **gitignore라 커밋에 포함되지 않는다.** 다른 머신엔 직접 만들어야 한다.
 
-- **`run-review.ps1` · `sync.ps1`은 UTF-8 WITH BOM이 의도된 것** — PS 5.1이 no-BOM .ps1의 한글 리터럴을 못 읽어 파서가 깨진다. **벗기지 말 것.** (no-BOM은 CyphenEngine 엔진 소스/DevLog 규칙이지 워크벤치 .ps1 규칙이 아님.)
-- `Reviews/2026-06-25_LinuxBringup/Codex/` 는 미커밋 상태 — Codex 본인 영역이니 직접 정리/커밋.
-- 2026-06-28 이전 5개 토픽은 **레거시 동결**(옛 번호파일). 마이그레이션하지 않는다.
+- `Projects/CyphenEngine/RULES.md` — 내용은 **이번 커밋 직전 `SHARED_RULES.md`**(git 이력)의 §2 코드스타일·§3 아키텍처·§4 제목·§5 DevLog에서 그대로 옮긴 것. `Common/PROJECT_RULES.template.md`를 복사해 채우면 된다.
+- `USER_PREFS.local.md` — 어조=한국어 존댓말, 검토 태도=반사적 동의 금지(no-yes-man)·근거 검증, 상태=현재 합의 신뢰·옛 기록 임의 복원 금지.
+
+## 남은 일 / 다음
+
+- 사용자가 **한 번 더 수정 예정** — 구체 지시는 다음 세션에서 받는다. 아래는 현재까지 확정된 구조다.
+- (이전 인계에서 넘어온, **아직 미확인**) `sync.ps1` 1회 실행으로 `Projects/CyphenEngine/baseline/.baseline` 기준커밋 마커 생성, `run-review.ps1` 실제 CLI 호출 end-to-end 1바퀴 검증. — 상태 미확정이니 사용자에게 확인 후 진행.
+
+## 깨지면 안 되는 것
+
+- `run-review.ps1`·`sync.ps1` = **UTF-8 BOM** 의도됨. 벗기면 PS5.1 한글 파서가 깨진다.
+- 줄바꿈/인코딩은 **프로젝트 룰**(워크벤치 전역 정책 아님). 전역 `.gitattributes` LF 정책은 두지 않기로 함(사용자 지시).
+- 2026-06-28 이전 5개 토픽은 레거시 동결(옛 번호파일). 마이그레이션하지 않는다.
 - 원본 `C:\Project\CyphenEngine`은 읽기만. 미러는 `Projects/CyphenEngine/baseline/`.

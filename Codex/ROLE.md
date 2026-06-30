@@ -2,8 +2,11 @@
 
 ## 공유 규칙
 
-기본 컨텍스트·코드 스타일·아키텍처 참고·DevLog 포맷은 공유 독립 md를 본다:
-**`../Common/SHARED_RULES.md`**
+**Mandatory:** read and follow `../Common/SHARED_RULES.md` before any answer, review, commit-message draft, DevLog draft, or workflow proposal. If memory or prior conversation conflicts with the shared rules, the shared rules win.
+
+- 범용 워크벤치 규칙 (SSOT): `../Common/SHARED_RULES.md`
+- 활성 프로젝트 규칙(코드 스타일·아키텍처·DevLog·커밋 관례): `../Projects/<active>/RULES.md` (있으면 함께 읽는다)
+- 개인 선호(어조·검토 태도): `../USER_PREFS.local.md` (있으면 함께 읽는다)
 
 ## Codex 역할
 

@@ -44,13 +44,19 @@ $claudeExe = Get-ChildItem -LiteralPath $claudeRoot -Filter 'claude.exe' -File -
     Select-Object -First 1 -ExpandProperty FullName
 $CLI = @{ Codex = "$env:APPDATA\npm\codex.cmd"; Claude = $claudeExe }
 
+# ===== 활성 프로젝트명: -Project 우선, 없으면 projects.json 첫 항목 =====
+function Get-ProjectName {
+    if ($Project) { return $Project }
+    $manifest = Join-Path $RepoRoot 'Projects\projects.json'
+    if (Test-Path $manifest) {
+        try { return (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json).projects[0].name } catch { }
+    }
+    return ''
+}
+
 # ===== Baseline: Projects/<name>/baseline/.baseline 의 기준 커밋 =====
 function Get-Baseline {
-    $name = $Project
-    $manifest = Join-Path $RepoRoot 'Projects\projects.json'
-    if (-not $name -and (Test-Path $manifest)) {
-        try { $name = (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json).projects[0].name } catch { }
-    }
+    $name = Get-ProjectName
     $marker = Join-Path $RepoRoot "Projects\$name\baseline\.baseline"
     if (Test-Path $marker) { return ((Get-Content -LiteralPath $marker -TotalCount 1).Trim()) }
     Write-Warning "baseline 마커 없음 ($marker). sync.ps1 미실행 → 'unsynced' 로 기록."
@@ -104,6 +110,18 @@ function Get-NextStep {
 
 function Build-Prompt($step) {
     $rules     = Read-IfExists (Join-Path $RepoRoot 'Common\SHARED_RULES.md')
+    $projName  = Get-ProjectName
+    $projRules = ''
+    if ($projName) {
+        $projPath = Join-Path $RepoRoot "Projects\$projName\RULES.md"
+        if (Test-Path $projPath) {
+            $projRules = Read-IfExists $projPath
+        }
+        else {
+            Write-Warning "프로젝트 규칙 없음: $projPath — Common\PROJECT_RULES.template.md 를 복사해 채우세요. 범용 규칙만으로 진행."
+            $projRules = "(활성 프로젝트 '$projName' 의 RULES.md 가 없습니다. 범용 규칙만 적용됩니다.)"
+        }
+    }
     $readmeTxt = Read-IfExists $readme
     $roleDesc  = if ($step.Agent -eq 'Codex') {
         'You are Codex, an independent architecture reviewer with an implementation-feasibility prior.'
@@ -127,8 +145,11 @@ function Build-Prompt($step) {
     @"
 $roleDesc
 
-[공유 규칙]
+[공유 규칙 — 범용 워크벤치]
 $rules
+
+[프로젝트 규칙 — $projName]
+$projRules
 
 [검토 주제 / README]
 $topicBlock
