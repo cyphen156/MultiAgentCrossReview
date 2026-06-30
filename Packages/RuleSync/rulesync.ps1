@@ -55,6 +55,7 @@ function Get-RelativePath([string] $Base, [string] $Path) {
 
 function Test-BlockedPath([string] $RelativePath) {
     $norm = $RelativePath.Replace('/', '\')
+    if ($norm -match '(^|\\)README\.md$') { return $true }
     if ($norm -match '(^|\\)baseline(\\|$)') { return $true }
     if ($norm -match '(^|\\)edit(\\|$)') { return $true }
     if ($norm -match '\.(jsonl|db|sqlite|sqlite3|key|pem|pfx|env|user|log)$') { return $true }

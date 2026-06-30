@@ -23,6 +23,10 @@ UserSettings/**/*.md
 Projects/<name>/RULES.md
 ```
 
+`README.md` files are intentionally excluded. Public guides such as
+`UserSettings/README.md` belong to the public workbench repository, not to the
+private rules vault.
+
 Never synced:
 
 ```text
@@ -80,6 +84,11 @@ RuleSync.local.psd1
 ```
 
 Do not commit actual vault paths or private markdown rules.
+
+## Example Private Vault
+
+See `examples/MultiAgentPrivateRulesSync/` for a public MIT example of the private
+vault layout. Use it as a shape for your own private repository.
 
 ## Conflict Policy
 

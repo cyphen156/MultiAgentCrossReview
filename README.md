@@ -92,14 +92,24 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 - Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
 - `Projects/<name>/baseline/**`와 `Projects/<name>/edit/**`는 RuleSync 대상이 아닙니다.
 
+설정:
+
+```powershell
+Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\rulesync.config.psd1
+```
+
+`rulesync.config.psd1`은 gitignore 대상입니다. 여기에 사용자의 private vault 경로를 지정합니다.
+
 예:
 
 ```powershell
-.\Packages\RuleSync\rulesync.ps1 -Direction Pull -VaultRoot C:\MultiAgentRulesVault
-.\Packages\RuleSync\rulesync.ps1 -Direction Push -VaultRoot C:\MultiAgentRulesVault
+.\Packages\RuleSync\rulesync.ps1 -Direction Pull
+.\Packages\RuleSync\rulesync.ps1 -Direction Push
 ```
 
 RuleSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다. 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
+
+공개 예시 vault 구조는 `Packages/RuleSync/examples/MultiAgentPrivateRulesSync/`에 있습니다. 실제 개인 룰 저장소는 이 예시를 참고해 별도 private repository로 만듭니다.
 
 ## 빠른 시작
 

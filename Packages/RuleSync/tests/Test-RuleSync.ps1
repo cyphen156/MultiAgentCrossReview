@@ -15,6 +15,7 @@ try {
         (Join-Path $worktree 'Projects\Demo\edit\Codex') | Out-Null
 
     'tone prefs' | Set-Content -LiteralPath (Join-Path $worktree 'UserSettings\preferences.md') -Encoding UTF8
+    'public guide' | Set-Content -LiteralPath (Join-Path $worktree 'UserSettings\README.md') -Encoding UTF8
     'project rules' | Set-Content -LiteralPath (Join-Path $worktree 'Projects\Demo\RULES.md') -Encoding UTF8
     'baseline data' | Set-Content -LiteralPath (Join-Path $worktree 'Projects\Demo\baseline\ignored.md') -Encoding UTF8
     'edit data' | Set-Content -LiteralPath (Join-Path $worktree 'Projects\Demo\edit\Codex\ignored.md') -Encoding UTF8
@@ -23,6 +24,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Push failed.' }
 
     if (-not (Test-Path (Join-Path $vault 'UserSettings\preferences.md'))) { throw 'UserSettings file was not pushed.' }
+    if (Test-Path (Join-Path $vault 'UserSettings\README.md')) { throw 'UserSettings README.md was pushed.' }
     if (-not (Test-Path (Join-Path $vault 'Projects\Demo\RULES.md'))) { throw 'Project RULES.md was not pushed.' }
     if (Test-Path (Join-Path $vault 'Projects\Demo\baseline\ignored.md')) { throw 'baseline file was pushed.' }
     if (Test-Path (Join-Path $vault 'Projects\Demo\edit\Codex\ignored.md')) { throw 'edit file was pushed.' }
@@ -60,6 +62,19 @@ try {
         if ($null -ne $oldConfig) { Set-Content -LiteralPath $configPath -Value $oldConfig -Encoding UTF8 -NoNewline }
         elseif (Test-Path -LiteralPath $configPath) { Remove-Item -LiteralPath $configPath -Force }
     }
+
+    $secretWorktree = Join-Path $root 'secret-worktree'
+    $secretVault = Join-Path $root 'secret-vault'
+    New-Item -ItemType Directory -Force -Path (Join-Path $secretWorktree 'UserSettings') | Out-Null
+    'sk-ant-abcdefghijklmnopqrstuvwxyz123456' | Set-Content -LiteralPath (Join-Path $secretWorktree 'UserSettings\preferences.md') -Encoding UTF8
+    $secretBlocked = $false
+    try {
+        & $script -Direction Push -WorktreeRoot $secretWorktree -VaultRoot $secretVault
+    }
+    catch {
+        $secretBlocked = $true
+    }
+    if (-not $secretBlocked) { throw 'Secret-like content was not blocked.' }
 
     Write-Host '[PASS] RuleSync round trip and conflict guard succeeded.' -ForegroundColor Green
 }
