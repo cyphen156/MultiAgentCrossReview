@@ -38,19 +38,48 @@ If an agent has useful WIP under `Projects/<name>/edit/**`, promote the relevant
 
 ## Usage
 
+Create a local ignored config:
+
+```powershell
+Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\rulesync.config.psd1
+```
+
+Edit `rulesync.config.psd1` and set `VaultRoot` to your private RulesVault clone.
+This file is machine-local and must not be committed.
+
 Pull private rules into the worktree:
 
 ```powershell
-.\Packages\RuleSync\rulesync.ps1 -Direction Pull -VaultRoot C:\MultiAgentRulesVault
+.\Packages\RuleSync\rulesync.ps1 -Direction Pull
 ```
 
 Push worktree rule changes back to the private vault:
 
 ```powershell
-.\Packages\RuleSync\rulesync.ps1 -Direction Push -VaultRoot C:\MultiAgentRulesVault
+.\Packages\RuleSync\rulesync.ps1 -Direction Push
 ```
 
+You may still pass `-VaultRoot` or `-WorktreeRoot` explicitly to override local config.
 Use `-DryRun` to preview, and `-Force` to overwrite divergent destinations.
+
+## Public vs Private Files
+
+Tracked in the public MIT repository:
+
+```text
+Packages/RuleSync/rulesync.ps1
+Packages/RuleSync/rulesync.config.example.psd1
+Packages/RuleSync/README.md
+```
+
+Ignored local files:
+
+```text
+Packages/RuleSync/rulesync.config.psd1
+RuleSync.local.psd1
+```
+
+Do not commit actual vault paths or private markdown rules.
 
 ## Conflict Policy
 

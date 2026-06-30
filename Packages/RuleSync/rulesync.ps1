@@ -15,8 +15,27 @@ $ErrorActionPreference = 'Stop'
 
 $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PackageRoot)
+
+function Import-RuleSyncConfig {
+    $candidates = @(
+        (Join-Path $PackageRoot 'rulesync.config.psd1'),
+        (Join-Path $RepoRoot 'RuleSync.local.psd1')
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return Import-PowerShellDataFile -LiteralPath $candidate
+        }
+    }
+
+    return @{}
+}
+
+$LocalConfig = Import-RuleSyncConfig
+if (-not $VaultRoot -and $LocalConfig.ContainsKey('VaultRoot')) { $VaultRoot = [string]$LocalConfig.VaultRoot }
+if (-not $WorktreeRoot -and $LocalConfig.ContainsKey('WorktreeRoot')) { $WorktreeRoot = [string]$LocalConfig.WorktreeRoot }
 if (-not $WorktreeRoot) { $WorktreeRoot = $RepoRoot }
-if (-not $VaultRoot) { throw 'VaultRoot is required. Example: -VaultRoot C:\MultiAgentRulesVault' }
+if (-not $VaultRoot) { throw 'VaultRoot is required. Pass -VaultRoot or create ignored Packages/RuleSync/rulesync.config.psd1 from rulesync.config.example.psd1.' }
 
 $WorktreeRoot = [IO.Path]::GetFullPath($WorktreeRoot).TrimEnd('\', '/')
 $VaultRoot = [IO.Path]::GetFullPath($VaultRoot).TrimEnd('\', '/')

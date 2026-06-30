@@ -42,6 +42,25 @@ try {
     $forced = Get-Content -Raw -LiteralPath (Join-Path $worktree 'UserSettings\preferences.md')
     if ($forced -notmatch 'vault changed') { throw 'Force pull did not overwrite destination.' }
 
+    $configWorktree = Join-Path $root 'config-worktree'
+    $configVault = Join-Path $root 'config-vault'
+    New-Item -ItemType Directory -Force -Path (Join-Path $configWorktree 'UserSettings') | Out-Null
+    'config prefs' | Set-Content -LiteralPath (Join-Path $configWorktree 'UserSettings\preferences.md') -Encoding UTF8
+    $packageRoot = Split-Path -Parent $script
+    $configPath = Join-Path $packageRoot 'rulesync.config.psd1'
+    $oldConfig = if (Test-Path -LiteralPath $configPath) { Get-Content -Raw -LiteralPath $configPath -Encoding UTF8 } else { $null }
+    "@{`n    VaultRoot = '$($configVault.Replace("'", "''"))'`n    WorktreeRoot = '$($configWorktree.Replace("'", "''"))'`n}`n" |
+        Set-Content -LiteralPath $configPath -Encoding UTF8
+    try {
+        & $script -Direction Push
+        if ($LASTEXITCODE -ne 0) { throw 'Config-based push failed.' }
+        if (-not (Test-Path (Join-Path $configVault 'UserSettings\preferences.md'))) { throw 'Config-based push did not use local config.' }
+    }
+    finally {
+        if ($null -ne $oldConfig) { Set-Content -LiteralPath $configPath -Value $oldConfig -Encoding UTF8 -NoNewline }
+        elseif (Test-Path -LiteralPath $configPath) { Remove-Item -LiteralPath $configPath -Force }
+    }
+
     Write-Host '[PASS] RuleSync round trip and conflict guard succeeded.' -ForegroundColor Green
 }
 finally {

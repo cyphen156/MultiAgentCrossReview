@@ -23,6 +23,8 @@
 
 # Optional machine-specific configuration
 /local.settings.psd1
+/RuleSync.local.psd1
+/Packages/RuleSync/rulesync.config.psd1
 
 # Local user settings. Keep only the public guide tracked.
 /UserSettings/**
