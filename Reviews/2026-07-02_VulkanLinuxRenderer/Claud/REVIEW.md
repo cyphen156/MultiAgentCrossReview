@@ -3,7 +3,7 @@ Review-ID: 2026-07-02_VulkanLinuxRenderer
 Author: Claude
 Baseline: 2026-07-02T13:26 sync | commit=unknown Source=93
 Session-Id:
-Status: Cross-reviewed
+Status: Revised
 ---
 # Claude REVIEW — 2026-07-02_VulkanLinuxRenderer
 
@@ -78,3 +78,31 @@ Codex의 답변을 읽기 전 형성한 내 자신의 판단은 다음과 같다
 전체적으로 Codex의 결론(우선순위, 패치 순서, boundary 판단)에 대해 실질적 반박 지점은 없고, 근거 보강이 필요한 세부 사항만 존재한다.
 
 Verdict: AGREE
+
+## 3. 수정 결론
+
+## 3. 수정 결론
+
+Codex의 교차검증을 반영해 초기 판단의 큰 틀(=먼저 `CyphenRendererVulkan.so`를 기존 Renderer Module ABI/산출물 규격에 연결하고, window/surface 소유권 재설계는 뒤로 미룬다)은 유지하되, 두 가지 지점에서 판단을 보강한다.
+
+**1) "미완성"이 아니라 "계약 불일치"로 재정의한다.**
+Codex가 지적한 `Surface.h`의 `CreateVulkanSurface(VkSurfaceKHR* outSurface, ...)`와 Linux `Surface.cpp`의 `CreateVulkanSurface(VkSurfaceKHR& outSurface, ...)` 시그니처 불일치, 빈 함수 본문, `VK_USE_PLATFORM_UXIX_KHR` 오타, `GetVulkanPlatformSurfaceExtensionName()` Linux 구현 누락은 baseline 인용 경로가 구체적이고 상호 일관되어 사실로 받아들인다.
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h : CreateVulkanSurface`
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp : CreateVulkanSurface`
+
+이는 "surface 로직을 마저 채우면 된다"는 단순 완성 작업이 아니라, HAL 헤더와 Linux 구현이 서로 다른 계약을 갖고 있어 현재 상태로는 컴파일 자체가 성립하지 않는 문제다. 따라서 #3_4의 1차 패치 범위에 "HAL 계약 정합화(포인터/참조 통일, extension name 함수 Linux 구현 추가, 매크로 오타 수정)"를 아키텍처 판단보다 먼저 오는 선행 조건으로 명시한다.
+
+**2) `NativeWindowInfo`의 display connection 부재를 패치 순서에 반영한다.**
+Codex가 추가한 관찰, 즉 `NativeWindowInfo`가 window handle과 크기만 전달하고 Xlib `Display*`(또는 XCB connection)를 담지 않는다는 점은 surface HAL 정합화만으로는 Linux surface 생성이 실제로 동작할 수 없다는 뜻이다. Xlib/XCB 기반 `vkCreateXlibSurfaceKHR` / `vkCreateXcbSurfaceKHR`는 최소 `Display*`와 `Window`(또는 `xcb_connection_t*`와 `xcb_window_t`)를 요구하므로, 이 필드가 없으면 Surface.cpp를 아무리 고쳐도 실제 구현이 불가능하다.
+
+이 지적을 받아들여 패치 순서를 다음과 같이 수정한다.
+
+1. `CyphenRendererVulkan.so` CMake 타깃과 `BuildArtifacts/Binaries/Linux/<Arch>/<Config>/` 산출물 배치 추가 (Codex 초기판단과 동일).
+2. Linux export macro 정리로 `GetRendererModuleApi` `dlsym` 가능하게 처리.
+3. HAL 계약 정합화: `Surface.h`/Linux `Surface.cpp` 시그니처 통일, `GetVulkanPlatformSurfaceExtensionName()` Linux 구현 추가, 매크로 오타 수정.
+4. `NativeWindowInfo`(또는 Linux 전용 windowInfo 확장 지점)에 Xlib `Display*`/`Window` 최소 필드를 추가해 3번 구현이 실제로 성립하도록 함. 이 확장은 Engine/Core 공통 구조에 Vulkan/X11 세부를 노출하지 않는 범위 내에서, Platform/Linux가 채우고 RendererVulkan 내부 HAL이 소비하는 형태로 한정한다.
+5. `find_package(X11 REQUIRED)`를 CyphenEngine 실행파일 전역 요구조건에서 windowed/renderer 대상의 선택 의존성으로 이동하는 설계 여지를 TODO로 남긴다 (headless/server 경로와 분리).
+
+이 조정은 Codex 교차검증의 핵심 기여(계약 불일치의 구체적 실체, NativeWindowInfo의 구조적 한계)를 받아들여 패치 순서를 더 촘촘하게 만든 것이며, 초기 판단의 대전제(모듈 ABI 연결 우선, window/surface 소유권 확정은 별도 후속 단계, X11 windowed first-light 한정 사용)를 뒤집지는 않는다.
+
+Position: KEEP
