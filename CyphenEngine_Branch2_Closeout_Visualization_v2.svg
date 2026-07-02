@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="960" viewBox="0 0 1600 960">
+	<defs>
+		<style>
+			.bg { fill: #f8fafc; }
+			.sheet { fill: #ffffff; stroke: #d9e2ef; stroke-width: 2; rx: 22; }
+			.boundary { fill: #ffffff; stroke: #e53935; stroke-width: 4; rx: 4; }
+			.module { fill: #ffffff; stroke: #2563eb; stroke-width: 4; rx: 4; }
+			.data { fill: #f3f6ff; stroke: #2563eb; stroke-width: 3; rx: 6; }
+			.data-soft { fill: #f8fafc; stroke: #cfd8e6; stroke-width: 2; rx: 6; }
+			.resource { fill: #fff9db; stroke: #eab308; stroke-width: 4; rx: 4; }
+			.table { fill: #f0fdf4; stroke: #22c55e; stroke-width: 4; rx: 4; }
+			.view { fill: #f0f9ff; stroke: #06b6d4; stroke-width: 4; rx: 4; }
+			.title { font: 800 34px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #111827; }
+			.area-title { font: 800 30px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #111827; }
+			.blue-title { font: 800 28px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #1d4ed8; }
+			.green-title { font: 800 24px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #16a34a; }
+			.label { font: 800 22px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #1f2937; }
+			.label-blue { font: 800 21px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #2563eb; }
+			.text { font: 500 18px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #667085; }
+			.small { font: 500 15px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #8a94a6; }
+			.arrow { stroke: #374151; stroke-width: 4; fill: none; }
+			.arrow-blue { stroke: #2563eb; stroke-width: 4; fill: none; }
+			.arrow-orange { stroke: #f59e0b; stroke-width: 5; fill: none; }
+			.arrow-cyan { stroke: #06b6d4; stroke-width: 4; fill: none; }
+			.arrow-green { stroke: #22c55e; stroke-width: 4; fill: none; }
+		</style>
+		<marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+			<path d="M 0 0 L 14 7 L 0 14 z" fill="#374151"/>
+		</marker>
+		<marker id="arrowBlue" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+			<path d="M 0 0 L 14 7 L 0 14 z" fill="#2563eb"/>
+		</marker>
+		<marker id="arrowOrange" markerWidth="16" markerHeight="16" refX="14" refY="8" orient="auto">
+			<path d="M 0 0 L 16 8 L 0 16 z" fill="#f59e0b"/>
+		</marker>
+		<marker id="arrowCyan" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+			<path d="M 0 0 L 14 7 L 0 14 z" fill="#06b6d4"/>
+		</marker>
+		<marker id="arrowGreen" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+			<path d="M 0 0 L 14 7 L 0 14 z" fill="#22c55e"/>
+		</marker>
+	</defs>
+
+	<rect class="bg" width="1600" height="960"/>
+	<rect class="sheet" x="22" y="22" width="1556" height="916"/>
+
+	<text class="title" x="58" y="70">CyphenEngine #2 Renderer Module — 데이터 플로우 구조</text>
+
+	<!-- Major boundaries -->
+	<rect class="boundary" x="70" y="130" width="360" height="720"/>
+	<text class="area-title" x="164" y="182">Engine</text>
+
+	<rect class="boundary" x="520" y="130" width="520" height="720"/>
+	<text class="area-title" x="666" y="182">Renderer</text>
+
+	<rect class="boundary" x="1130" y="130" width="390" height="360"/>
+	<text class="area-title" x="1240" y="182">Backend</text>
+
+	<rect class="boundary" x="1130" y="610" width="390" height="240"/>
+	<text class="area-title" x="1280" y="760">View</text>
+
+	<!-- Engine content -->
+	<text class="label" x="132" y="260">Frame</text>
+	<text class="text" x="132" y="296">월드 상태 스냅샷</text>
+	<text class="text" x="132" y="326">픽셀 없음 · ResourceId만</text>
+
+	<path class="arrow-cyan" marker-end="url(#arrowCyan)" d="M 310 690 C 250 650 214 576 214 496 C 214 406 274 342 354 316"/>
+	<text class="text" x="230" y="744">present 완료 후</text>
+	<text class="text" x="230" y="774">다음 Frame 생성</text>
+
+	<!-- Renderer content -->
+	<rect class="module" x="570" y="170" width="420" height="390"/>
+	<text class="blue-title" x="650" y="222">CommandStream</text>
+
+	<rect class="data" x="610" y="252" width="340" height="58"/>
+	<text class="label-blue" x="666" y="288">RenderCommandList</text>
+
+	<rect class="data" x="610" y="334" width="100" height="56"/>
+	<text class="label-blue" x="636" y="368">words*</text>
+	<rect class="data" x="730" y="334" width="100" height="56"/>
+	<text class="label-blue" x="748" y="368">wordCount</text>
+	<rect class="data" x="850" y="334" width="100" height="56"/>
+	<text class="label-blue" x="862" y="368">commandCount</text>
+
+	<rect class="data-soft" x="610" y="420" width="340" height="104"/>
+	<text class="label" x="716" y="454">CommandIR</text>
+	<rect class="header" x="636" y="472" width="92" height="34"/>
+	<text class="small" x="654" y="494">HEADER</text>
+	<rect class="payload" x="738" y="472" width="86" height="34"/>
+	<text class="small" x="754" y="494">payload</text>
+	<rect class="header" x="834" y="472" width="92" height="34"/>
+	<text class="small" x="852" y="494">HEADER</text>
+
+	<rect class="resource" x="540" y="630" width="480" height="78"/>
+	<text class="label" x="604" y="680">ResourceCommand</text>
+	<rect class="data" x="564" y="646" width="56" height="44"/>
+	<rect class="data" x="640" y="646" width="56" height="44"/>
+	<rect class="data" x="716" y="646" width="56" height="44"/>
+	<rect class="data" x="792" y="646" width="56" height="44"/>
+
+	<!-- Backend content -->
+	<text class="label-blue" x="1174" y="240">Stream → D3D11 API</text>
+	<text class="text" x="1174" y="284">CommandStream 순회</text>
+	<text class="text" x="1174" y="318">ResourceId 조회</text>
+	<text class="text" x="1174" y="352">Draw / Present</text>
+
+	<rect class="table" x="1162" y="398" width="324" height="58"/>
+	<text class="green-title" x="1226" y="436">ResourceTable</text>
+
+	<!-- Arrows -->
+	<path class="arrow" marker-end="url(#arrow)" d="M 430 296 C 470 296 484 296 520 296"/>
+	<text class="label" x="446" y="270">Frame</text>
+
+	<path class="arrow-blue" marker-end="url(#arrowBlue)" d="M 990 360 C 1044 360 1076 360 1130 314"/>
+	<text class="label-blue" x="1014" y="334">CommandStream</text>
+
+	<path class="arrow-orange" marker-end="url(#arrowOrange)" d="M 780 630 C 926 596 1032 546 1162 456"/>
+	<text class="label" x="824" y="604">ResourceCommand</text>
+
+	<path class="arrow-green" marker-end="url(#arrowGreen)" d="M 1324 456 L 1324 398"/>
+	<text class="text" x="1356" y="390">get</text>
+
+	<path class="arrow-cyan" marker-end="url(#arrowCyan)" d="M 1428 456 C 1496 508 1512 592 1498 682"/>
+	<text class="text" x="1452" y="548">present</text>
+
+	<path class="arrow-cyan" marker-end="url(#arrowCyan)" d="M 1324 850 C 1230 914 1038 896 920 850 C 734 778 588 774 430 742"/>
+	<text class="text" x="920" y="888">완료 신호</text>
+
+	<!-- Footer -->
+	<text class="text" x="70" y="900">핵심: Engine은 Frame을 만들고, Renderer는 CommandStream을 만들며, 그 내부 CommandIR을 Backend가 순회해 View에 Present한다.</text>
+</svg>
