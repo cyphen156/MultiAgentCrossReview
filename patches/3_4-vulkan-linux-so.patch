@@ -1,0 +1,216 @@
+diff --git a/CyphenEngine/CMakeLists.txt b/CyphenEngine/CMakeLists.txt
+index 0000000..0000000 100644
+--- a/CyphenEngine/CMakeLists.txt
++++ b/CyphenEngine/CMakeLists.txt
+@@ -111,6 +111,14 @@ else()
+ 	message(FATAL_ERROR "Unsupported platform for CyphenEngine.")
+ endif()
+ 
++set(CYPHEN_RENDERER_VULKAN_ROOT
++	${CMAKE_CURRENT_SOURCE_DIR}/../Modules/Renderer/CyphenRendererVulkan
++)
++
++set(CYPHEN_RENDERER_VULKAN_SOURCES
++	${CYPHEN_RENDERER_VULKAN_ROOT}/Source/Private/VulkanRenderer.cpp
++	${CYPHEN_RENDERER_VULKAN_ROOT}/Source/Private/VulkanRendererModule.cpp
++)
+ # ----------------------------------------------------------------------------
+ # 鍮뚮뱶 ?곗텧臾?寃쎈줈 洹쒓꺽??# ----------------------------------------------------------------------------
+ set(CYPHEN_BUILD_ARTIFACTS_ROOT
+@@ -145,6 +153,14 @@ foreach(cfg IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
+ 		LIBRARY_OUTPUT_DIRECTORY_${CYPHEN_CFG_UPPER} ${CYPHEN_BINARIES_ROOT}/${cfg}
+ 	)
+ endforeach()
++
++function(cyphen_apply_binary_output target_name)
++	foreach(cfg IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
++		string(TOUPPER ${cfg} CYPHEN_CFG_UPPER)
++
++		set_target_properties(${target_name} PROPERTIES
++			RUNTIME_OUTPUT_DIRECTORY_${CYPHEN_CFG_UPPER} ${CYPHEN_BINARIES_ROOT}/${cfg}
++			ARCHIVE_OUTPUT_DIRECTORY_${CYPHEN_CFG_UPPER} ${CYPHEN_BINARIES_ROOT}/${cfg}
++			LIBRARY_OUTPUT_DIRECTORY_${CYPHEN_CFG_UPPER} ${CYPHEN_BINARIES_ROOT}/${cfg}
++		)
++	endforeach()
++endfunction()
+ 
+ # ----------------------------------------------------------------------------
+ # include 猷⑦듃
+@@ -208,6 +224,77 @@ if(UNIX)
+ 		${X11_LIBRARIES}
+ 		${CMAKE_DL_LIBS}
+ 	)
++
++	find_package(Vulkan REQUIRED)
++
++	find_program(GLSLANG_VALIDATOR glslangValidator)
++
++	if(NOT GLSLANG_VALIDATOR)
++		message(FATAL_ERROR "glslangValidator is required to build CyphenRendererVulkan shaders.")
++	endif()
++
++	add_library(CyphenRendererVulkan SHARED
++		${CYPHEN_RENDERER_VULKAN_SOURCES}
++		${CYPHEN_RENDERER_VULKAN_ROOT}/Source/Platform/Linux/Private/Surface.cpp
++	)
++
++	cyphen_apply_binary_output(CyphenRendererVulkan)
++
++	set_target_properties(CyphenRendererVulkan PROPERTIES
++		PREFIX ""
++	)
++
++	target_include_directories(CyphenRendererVulkan PRIVATE
++		${CMAKE_CURRENT_SOURCE_DIR}/Source
++		${CYPHEN_RENDERER_VULKAN_ROOT}/Source
++		${Vulkan_INCLUDE_DIRS}
++		${X11_INCLUDE_DIR}
++	)
++
++	target_compile_definitions(CyphenRendererVulkan PRIVATE
++		TARGET_PLATFORM_LINUX
++		CYPHEN_RENDERER_MODULE_EXPORT=__attribute__\(\(visibility\(\"default\"\)\)\)
++		$<$<CONFIG:Debug>:_DEBUG>
++		$<$<CONFIG:Release>:NDEBUG>
++		$<$<CONFIG:RelWithDebInfo>:NDEBUG>
++		$<$<CONFIG:MinSizeRel>:NDEBUG>
++	)
++
++	target_compile_options(CyphenRendererVulkan PRIVATE
++		-Wall
++		-Wextra
++		-fvisibility=hidden
++	)
++
++	target_link_libraries(CyphenRendererVulkan PRIVATE
++		Vulkan::Vulkan
++		${X11_LIBRARIES}
++	)
++
++	add_custom_command(TARGET CyphenRendererVulkan POST_BUILD
++		COMMAND ${GLSLANG_VALIDATOR}
++			-V
++			${CYPHEN_RENDERER_VULKAN_ROOT}/Source/Private/TexturedQuad.vert
++			-o
++			$<TARGET_FILE_DIR:CyphenRendererVulkan>/TexturedQuad.vert.spv
++		COMMAND ${GLSLANG_VALIDATOR}
++			-V
++			${CYPHEN_RENDERER_VULKAN_ROOT}/Source/Private/TexturedQuad.frag
++			-o
++			$<TARGET_FILE_DIR:CyphenRendererVulkan>/TexturedQuad.frag.spv
++		COMMENT "Compiling CyphenRendererVulkan shaders"
++	)
+ endif()
+ 
+ # ----------------------------------------------------------------------------
+diff --git a/CyphenEngine/Source/HAL/Public/NativeWindowInfo.h b/CyphenEngine/Source/HAL/Public/NativeWindowInfo.h
+index 0000000..0000000 100644
+--- a/CyphenEngine/Source/HAL/Public/NativeWindowInfo.h
++++ b/CyphenEngine/Source/HAL/Public/NativeWindowInfo.h
+@@ -23,6 +23,7 @@
+ 
+ struct NativeWindowInfo
+ {
++	void* nativeDisplayHandle = nullptr;
+ 	void* nativeWindowHandle = nullptr;
+ 	uint32 windowWidth = 0;
+ 	uint32 windowHeight = 0;
+diff --git a/CyphenEngine/Source/Platform/Linux/Private/Launch.cpp b/CyphenEngine/Source/Platform/Linux/Private/Launch.cpp
+index 0000000..0000000 100644
+--- a/CyphenEngine/Source/Platform/Linux/Private/Launch.cpp
++++ b/CyphenEngine/Source/Platform/Linux/Private/Launch.cpp
+@@ -58,6 +58,7 @@ LaunchContext Launch::CreateLaunchContext(Window windowHandle)
+ {
+ 	LaunchContext launchContext;
+ 
++	launchContext.windowInfo.nativeDisplayHandle = g_display;
+ 	launchContext.windowInfo.nativeWindowHandle =
+ 		reinterpret_cast<void*>(static_cast<std::uintptr_t>(windowHandle));
+ 
+diff --git a/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp b/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp
+index 0000000..0000000 100644
+--- a/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp
++++ b/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp
+@@ -1,11 +1,48 @@
+-#define VK_USE_PLATFORM_UXIX_KHR
++#define VK_USE_PLATFORM_XLIB_KHR
+ 
+ #include <vulkan/vulkan.h>
+ 
++#include <X11/Xlib.h>
++
++#include <cstdint>
++
+ #include "HAL/Private/Surface.h"
+ 
++const char* GetVulkanPlatformSurfaceExtensionName()
++{
++	return VK_KHR_XLIB_SURFACE_EXTENSION_NAME;
++}
++
+ bool CreateVulkanSurface(
+ 	VkInstance instance,
+ 	const NativeWindowInfo& windowInfo,
+-	VkSurfaceKHR& outSurface)
++	VkSurfaceKHR* outSurface)
+ {
++	if (instance == VK_NULL_HANDLE ||
++		windowInfo.nativeDisplayHandle == nullptr ||
++		windowInfo.nativeWindowHandle == nullptr ||
++		outSurface == nullptr)
++	{
++		return false;
++	}
++
++	Display* display = static_cast<Display*>(windowInfo.nativeDisplayHandle);
++	Window window =
++		static_cast<Window>(reinterpret_cast<std::uintptr_t>(windowInfo.nativeWindowHandle));
++
++	if (window == 0)
++	{
++		return false;
++	}
++
++	XWindowAttributes windowAttributes = {};
++
++	if (XGetWindowAttributes(display, window, &windowAttributes) == 0)
++	{
++		return false;
++	}
++
++	VkXlibSurfaceCreateInfoKHR surfaceCreateInfo = {};
++	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
++	surfaceCreateInfo.dpy = display;
++	surfaceCreateInfo.window = window;
++
++	return vkCreateXlibSurfaceKHR(
++		instance,
++		&surfaceCreateInfo,
++		nullptr,
++		outSurface) == VK_SUCCESS;
+ }
+diff --git a/Modules/Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp b/Modules/Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp
+index 0000000..0000000 100644
+--- a/Modules/Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp
++++ b/Modules/Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp
+@@ -91,10 +91,16 @@ RendererModuleResult ExecuteDebugResourceCommandList(
+ }
+ #endif
+ 
+-// dllexport??Windows ?꾩슜?낅땲??#3_1 Windows ?ㅼ틦?대뱶 湲곗?, Dx11怨??숈씪 ?좎?).
+-// Linux .so 鍮뚮뱶 ??visibility-default 留ㅽ겕濡쒕줈 ?쇱썝?뷀븯???묒뾽?
+-// ModuleLoader(dlopen) ?④퀎? 臾띠뼱 泥섎━?⑸땲??Q001_002 異붿쟻 ??ぉ).
+-extern "C" __declspec(dllexport)
++#ifndef CYPHEN_RENDERER_MODULE_EXPORT
++#if defined(_WIN32)
++#define CYPHEN_RENDERER_MODULE_EXPORT __declspec(dllexport)
++#else
++#define CYPHEN_RENDERER_MODULE_EXPORT __attribute__((visibility("default")))
++#endif
++#endif
++
++// ModuleLoader(dlopen/GetProcAddress)가 찾는 공통 모듈 진입점입니다.
++extern "C" CYPHEN_RENDERER_MODULE_EXPORT
+ RendererModuleResult GetRendererModuleApi(RendererModuleApi* outRendererModuleApi)
+ {
+ 	if (outRendererModuleApi == nullptr)
