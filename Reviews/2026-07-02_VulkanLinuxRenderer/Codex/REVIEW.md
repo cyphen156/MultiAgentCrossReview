@@ -3,7 +3,7 @@ Review-ID: 2026-07-02_VulkanLinuxRenderer
 Author: Codex
 Baseline: 2026-07-02T13:26 sync | commit=unknown Source=93
 Session-Id:
-Status: Cross-reviewed
+Status: Revised
 ---
 # Codex REVIEW — 2026-07-02_VulkanLinuxRenderer
 
@@ -46,3 +46,7 @@ Claude의 판단에는 대체로 동의합니다. 특히 RendererVulkan `.so`가
 Claude가 언급한 `find_package(X11 REQUIRED)` 우려도 타당합니다. 현재 `CyphenEngine` CMake는 UNIX에서 X11을 필수로 요구하므로, DevLog/Todos의 "Linux는 GUI가 기본 실행 조건이 아니다"라는 방향과 충돌할 수 있습니다. 다만 이것은 RendererVulkan `.so` 자체의 CMake가 아직 기준선에 보이지 않는 상태이므로, 즉시 결론은 "X11을 renderer/windowed target 선택 의존성으로 옮길 설계가 필요하다" 정도가 적절합니다.
 
 Verdict: AGREE
+
+## 3. 수정 결론
+
+`NativeWindowInfo`가 현재 window handle과 크기만 전달하고 display connection을 담지 않는 점도 확인됐습니다. 이 때문에 Linux Vulkan surface 구현은 단순 함수 채우기가 아니라 최소 계약 보강 없이는 Xlib/XCB surface 생성 자체가 막힐 가능성이 큽니다.
