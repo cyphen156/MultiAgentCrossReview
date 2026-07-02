@@ -1,0 +1,249 @@
+﻿diff --git "a/Projects\\CyphenEngine\\baseline\\CyphenEngine\\Source/Engine/Public/EngineContext.h" "b/Projects\\CyphenEngine\\edit\\Codex\\CyphenEngine\\Source/Engine/Public/EngineContext.h"
+index afbf631..e91a3ba 100644
+--- "a/Projects\\CyphenEngine\\baseline\\CyphenEngine\\Source/Engine/Public/EngineContext.h"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\CyphenEngine\\Source/Engine/Public/EngineContext.h"
+@@ -10,15 +10,21 @@
+ // ----------------------------------------------------------------------------
+ // Platform Launch가 Engine 초기화 전에 수집한 실행 정보입니다.
+ //
+-// Native Window 정보와 외부에서 결정된 Module 구성을 Engine에 전달합니다.
++// Native Render Context, Native Window 정보와 외부에서 결정된 Module 구성을
++// Engine에 전달합니다.
+ // ============================================================================
+ 
+-struct LaunchContext
++struct LaunchContext
+ {
+-	void* nativeRenderContextHandle = nullptr;
+-	NativeWindowInfo mainWindowInfo;
+-	std::vector<ModuleDescriptor> moduleDescriptors;
+-};
++	// Platform Launch가 획득한 대표 render context handle입니다.
++	// Windows: HINSTANCE, Linux X11: Display*.
++	void* nativeRenderContextHandle = nullptr;
++
++	// Platform Launch가 만든 프로세스 대표 main window 정보입니다.
++	NativeWindowInfo mainWindowInfo;
++
++	std::vector<ModuleDescriptor> moduleDescriptors;
++};
+ 
+ // ============================================================================
+ // EngineContext
+diff --git "a/Projects\\CyphenEngine\\baseline\\CyphenEngine\\Source/Modules/Renderer/Public/RendererModule.h" "b/Projects\\CyphenEngine\\edit\\Codex\\CyphenEngine\\Source/Modules/Renderer/Public/RendererModule.h"
+index b530596..38edabb 100644
+--- "a/Projects\\CyphenEngine\\baseline\\CyphenEngine\\Source/Modules/Renderer/Public/RendererModule.h"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\CyphenEngine\\Source/Modules/Renderer/Public/RendererModule.h"
+@@ -26,7 +26,7 @@
+ //   - executeResourceCommandList는 Debug fixture 전용입니다.
+ // ============================================================================
+ 
+-constexpr uint32 RENDERER_MODULE_ABI_GENERATION = 4;
++constexpr uint32 RENDERER_MODULE_ABI_GENERATION = 5;
+ constexpr uint32 RENDERER_MODULE_API_VERSION = RENDERER_MODULE_ABI_GENERATION;
+ 
+ constexpr const char GET_RENDERER_MODULE_API_NAME[] = "GetRendererModuleApi";
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererDx11/Source/Private/Dx11Renderer.cpp" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererDx11/Source/Private/Dx11Renderer.cpp"
+index 2cc515e..47d727d 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererDx11/Source/Private/Dx11Renderer.cpp"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererDx11/Source/Private/Dx11Renderer.cpp"
+@@ -44,6 +44,8 @@ namespace
+ 
+ bool Dx11Renderer::Initialize(void* nativeRenderContextHandle, const NativeWindowInfo& windowInfo)
+ {
++	(void)nativeRenderContextHandle;
++
+ 	if (windowInfo.nativeWindowHandle == nullptr ||
+ 		windowInfo.windowWidth == 0 ||
+ 		windowInfo.windowHeight == 0)
+@@ -789,4 +791,4 @@ Dx11Texture2D* Dx11Renderer::FindTexture2D(ResourceId resourceId)
+ 	}
+ 
+ 	return &texture;
+-}
+\ No newline at end of file
++}
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h"
+index 7b6feb6..6925754 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h"
+@@ -10,10 +10,11 @@
+ // CyphenRendererVulkan 모듈 내부의 Platform/HAL 계약입니다.
+ //
+ // 책임:
+-//   - Engine 공통 NativeWindowInfo를 Vulkan VkSurfaceKHR로 변환합니다.
++//   - Engine 공통 NativeWindowInfo와 Launch native render context를
++//     Vulkan VkSurfaceKHR로 변환합니다.
+ //   - VkInstance 생성 시 필요한 플랫폼 surface extension 이름을 제공합니다.
+-//   - VulkanRenderer가 Win32 HWND / HINSTANCE 세부 구현을 직접 알지 않게
+-//     플랫폼별 surface 생성 지점을 숨깁니다.
++//   - VulkanRenderer가 Win32 HWND/HINSTANCE, X11 Display/Window 세부 구현을
++//     직접 알지 않게 플랫폼별 surface 생성 지점을 숨깁니다.
+ //
+ // 비책임:
+ //   - VkInstance 생성 / 파괴
+@@ -29,5 +30,6 @@ const char* GetVulkanPlatformSurfaceExtensionName();
+ 
+ bool CreateVulkanSurface(
+ 	VkInstance instance,
++	void* nativeRenderContextHandle,
+ 	const NativeWindowInfo& windowInfo,
+ 	VkSurfaceKHR* outSurface);
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp"
+index a244744..40a8c2a 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp"
+@@ -2,6 +2,10 @@
+ 
+ #include <vulkan/vulkan.h>
+ 
++#include <X11/Xlib.h>
++
++#include <cstdint>
++
+ #include "HAL/Private/Surface.h"
+ 
+ const char* GetVulkanPlatformSurfaceExtensionName()
+@@ -10,8 +14,35 @@ const char* GetVulkanPlatformSurfaceExtensionName()
+ }
+ 
+ bool CreateVulkanSurface(
+-    VkInstance instance,
+-    const NativeWindowInfo& windowInfo,
+-    VkSurfaceKHR* outSurface)
++	VkInstance instance,
++	void* nativeRenderContextHandle,
++	const NativeWindowInfo& windowInfo,
++	VkSurfaceKHR* outSurface)
+ {
+-}
+\ No newline at end of file
++	if (instance == VK_NULL_HANDLE ||
++		nativeRenderContextHandle == nullptr ||
++		windowInfo.nativeWindowHandle == nullptr ||
++		outSurface == nullptr)
++	{
++		return false;
++	}
++
++	Display* const display =
++		static_cast<Display*>(nativeRenderContextHandle);
++
++	const Window window =
++		static_cast<Window>(
++			reinterpret_cast<std::uintptr_t>(
++				windowInfo.nativeWindowHandle));
++
++	VkXlibSurfaceCreateInfoKHR surfaceCreateInfo = {};
++	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
++	surfaceCreateInfo.dpy = display;
++	surfaceCreateInfo.window = window;
++
++	return vkCreateXlibSurfaceKHR(
++		instance,
++		&surfaceCreateInfo,
++		nullptr,
++		outSurface) == VK_SUCCESS;
++}
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Windows/Private/Surface.cpp" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Windows/Private/Surface.cpp"
+index f07c2c4..1a59ace 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Windows/Private/Surface.cpp"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Platform/Windows/Private/Surface.cpp"
+@@ -13,16 +13,21 @@ const char* GetVulkanPlatformSurfaceExtensionName()
+ 
+ bool CreateVulkanSurface(
+ 	VkInstance instance,
++	void* nativeRenderContextHandle,
+ 	const NativeWindowInfo& windowInfo,
+ 	VkSurfaceKHR* outSurface)
+ {
+ 	if (instance == VK_NULL_HANDLE ||
++		nativeRenderContextHandle == nullptr ||
+ 		windowInfo.nativeWindowHandle == nullptr ||
+ 		outSurface == nullptr)
+ 	{
+ 		return false;
+ 	}
+ 
++	const HINSTANCE instanceHandle =
++		static_cast<HINSTANCE>(nativeRenderContextHandle);
++
+ 	const HWND windowHandle = static_cast<HWND>(windowInfo.nativeWindowHandle);
+ 
+ 	if (::IsWindow(windowHandle) == FALSE)
+@@ -32,7 +37,7 @@ bool CreateVulkanSurface(
+ 
+ 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
+ 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+-	surfaceCreateInfo.hinstance = ::GetModuleHandleW(nullptr);
++	surfaceCreateInfo.hinstance = instanceHandle;
+ 	surfaceCreateInfo.hwnd = windowHandle;
+ 
+ 	return vkCreateWin32SurfaceKHR(
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.cpp" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.cpp"
+index e486b20..c0e8a94 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.cpp"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.cpp"
+@@ -98,7 +98,7 @@ bool VulkanRenderer::Initialize(void* nativeRenderContextHandle, const NativeWin
+ 
+ 	PRINT_DEBUG_OUTPUT("[VulkanRenderer] CreateInstance success\n");
+ 
+-	if (CreateSurface(windowInfo) == false)
++	if (CreateSurface(nativeRenderContextHandle, windowInfo) == false)
+ 	{
+ 		PRINT_DEBUG_OUTPUT("[VulkanRenderer] CreateSurface failed\n");
+ 		Shutdown();
+@@ -200,7 +200,7 @@ bool VulkanRenderer::Initialize(void* nativeRenderContextHandle, const NativeWin
+ 	PRINT_DEBUG_OUTPUT("[VulkanRenderer] Initialize success\n");
+ #else
+ 	if (CreateInstance() == false || 
+-		CreateSurface(windowInfo) == false || 
++		CreateSurface(nativeRenderContextHandle, windowInfo) == false ||
+ 		SelectPhysicalDevice() == false || 
+ 		CreateDevice() == false || 
+ 		CreateSwapchain(windowInfo) == false || 
+@@ -451,9 +451,13 @@ bool VulkanRenderer::CreateInstance()
+ 		instance != VK_NULL_HANDLE;
+ }
+ 
+-bool VulkanRenderer::CreateSurface(const NativeWindowInfo& windowInfo)
++bool VulkanRenderer::CreateSurface(void* nativeRenderContextHandle, const NativeWindowInfo& windowInfo)
+ {
+-	return CreateVulkanSurface(instance, windowInfo, &surface);
++	return CreateVulkanSurface(
++		instance,
++		nativeRenderContextHandle,
++		windowInfo,
++		&surface);
+ }
+ 
+ bool VulkanRenderer::SelectPhysicalDevice()
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.h" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.h"
+index 4969935..02b8e05 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.h"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRenderer.h"
+@@ -105,7 +105,7 @@ public:
+ 
+ private:
+ 	bool CreateInstance();
+-	bool CreateSurface(const NativeWindowInfo& windowInfo);
++	bool CreateSurface(void* nativeRenderContextHandle, const NativeWindowInfo& windowInfo);
+ 	bool SelectPhysicalDevice();
+ 	bool CreateDevice();
+ 	bool CreateSwapchain(const NativeWindowInfo& windowInfo);
+diff --git "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp" "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp"
+index aa421fc..d46f4c7 100644
+--- "a/Projects\\CyphenEngine\\baseline\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp"
++++ "b/Projects\\CyphenEngine\\edit\\Codex\\Modules\\Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp"
+@@ -92,9 +92,8 @@ RendererModuleResult ExecuteDebugResourceCommandList(
+ }
+ #endif
+ 
+-// dllexport는 Windows 전용입니다(#3_1 Windows 스캐폴드 기준, Dx11과 동일 유지).
+-// Linux .so 빌드 시 visibility-default 매크로로 일원화하는 작업은
+-// ModuleLoader(dlopen) 단계와 묶어 처리합니다(Q001_002 추적 항목).
++// Renderer module entry point입니다.
++// Export 속성은 PlatformDefine.h 기반 CYPHEN_MODULE_EXPORT로 분기합니다.
+ extern "C" CYPHEN_MODULE_EXPORT
+ RendererModuleResult GetRendererModuleApi(RendererModuleApi* outRendererModuleApi)
+ {

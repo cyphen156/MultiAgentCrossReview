@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+	<defs>
+		<style>
+			.bg { fill: #f6f8fb; }
+			.panel { fill: #ffffff; stroke: #d9e2ef; stroke-width: 1.5; rx: 8; }
+			.panel-strong { fill: #ffffff; stroke: #a9bbd4; stroke-width: 2; rx: 8; }
+			.box { fill: #fbfcfe; stroke: #cbd6e5; stroke-width: 1.5; rx: 6; }
+			.box-blue { fill: #eef5ff; stroke: #7ea6df; stroke-width: 1.6; rx: 6; }
+			.box-green { fill: #eefaf5; stroke: #6dbb98; stroke-width: 1.6; rx: 6; }
+			.box-purple { fill: #f4f0ff; stroke: #a896df; stroke-width: 1.6; rx: 6; }
+			.box-orange { fill: #fff5ea; stroke: #dfa366; stroke-width: 1.6; rx: 6; }
+			.title { font: 800 44px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #141821; }
+			.subtitle { font: 500 21px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #556273; }
+			.section { font: 800 25px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #18212f; }
+			.label { font: 800 21px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #1b2532; }
+			.text { font: 500 17px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #4f5f70; }
+			.small { font: 600 15px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #657387; }
+			.badge-text { font: 800 15px 'Segoe UI', 'Noto Sans KR', Arial, sans-serif; fill: #ffffff; }
+			.badge-blue { fill: #2f73d8; }
+			.badge-green { fill: #1f9d70; }
+			.badge-purple { fill: #7157d9; }
+			.badge-gray { fill: #6d7b8f; }
+			.line { stroke: #97a6ba; stroke-width: 3; fill: none; }
+			.line-blue { stroke: #2f73d8; stroke-width: 3.5; fill: none; }
+			.line-green { stroke: #1f9d70; stroke-width: 3.5; fill: none; }
+			.dash { stroke: #b7c3d2; stroke-width: 2.5; fill: none; stroke-dasharray: 8 8; }
+		</style>
+		<marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+			<path d="M 0 0 L 12 6 L 0 12 z" fill="#97a6ba"/>
+		</marker>
+		<marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+			<path d="M 0 0 L 12 6 L 0 12 z" fill="#2f73d8"/>
+		</marker>
+		<marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+			<path d="M 0 0 L 12 6 L 0 12 z" fill="#1f9d70"/>
+		</marker>
+	</defs>
+
+	<rect class="bg" width="1600" height="1000"/>
+
+	<text class="title" x="76" y="82">CyphenEngine 개발 현황</text>
+	<text class="subtitle" x="78" y="120">구조 검증 단계: Core 기준선, Windows/Linux Platform, Renderer Module, Linux Vulkan GUI first-light</text>
+	<rect class="badge-green" x="1280" y="54" width="240" height="42" rx="21"/>
+	<text class="badge-text" x="1326" y="81">2026.07.02</text>
+
+	<rect class="panel-strong" x="76" y="162" width="1448" height="160"/>
+	<text class="section" x="108" y="205">현재 도달 지점</text>
+	<text class="text" x="108" y="244">CyphenEngine은 아직 완성된 게임 엔진이 아니라, 엔진의 핵심 경계가 실제 실행 파일과 backend module 위에서 성립하는지 확인하는 단계입니다.</text>
+	<text class="text" x="108" y="278">현재 기준선은 Core I/O 검증, Windows/Linux Platform 연결, Renderer Module ABI, Linux Vulkan GUI 출력까지입니다.</text>
+
+	<rect class="box-green" x="1060" y="190" width="188" height="84"/>
+	<text class="label" x="1092" y="224">Core</text>
+	<text class="small" x="1092" y="250">PASS=69 / FAIL=0</text>
+	<rect class="box-green" x="1276" y="190" width="188" height="84"/>
+	<text class="label" x="1308" y="224">Module</text>
+	<text class="small" x="1308" y="250">PASS=34 / FAIL=0</text>
+
+	<rect class="panel" x="76" y="362" width="450" height="464"/>
+	<text class="section" x="108" y="405">빌드가 결정하는 것</text>
+	<text class="text" x="108" y="438">Build는 런타임 레이어가 아니라,</text>
+	<text class="text" x="108" y="464">컴파일 대상과 platform define을 고정합니다.</text>
+
+	<rect class="box-blue" x="118" y="508" width="168" height="72"/>
+	<text class="label" x="154" y="540">Platform</text>
+	<text class="small" x="154" y="563">Windows / Linux</text>
+
+	<rect class="box-blue" x="316" y="508" width="168" height="72"/>
+	<text class="label" x="356" y="540">Target</text>
+	<text class="small" x="340" y="563">Editor / Game / Server</text>
+
+	<rect class="box" x="118" y="638" width="366" height="88"/>
+	<text class="label" x="154" y="672">Concrete 구현 선택</text>
+	<text class="small" x="154" y="698">빌드가 아는 차이는 런타임 인터페이스로 미루지 않음</text>
+
+	<path class="line-blue" marker-end="url(#arrowBlue)" d="M 202 580 L 202 638"/>
+	<path class="line-blue" marker-end="url(#arrowBlue)" d="M 400 580 L 400 638"/>
+
+	<text class="small" x="118" y="778">예: TARGET_PLATFORM_LINUX, BUILD_TARGET_EDITOR</text>
+
+	<rect class="panel" x="576" y="362" width="448" height="464"/>
+	<text class="section" x="608" y="405">엔진 내부 경계</text>
+
+	<rect class="box-green" x="624" y="458" width="162" height="76"/>
+	<text class="label" x="664" y="490">Core</text>
+	<text class="small" x="650" y="514">OS 독립 API</text>
+
+	<rect class="box" x="624" y="612" width="162" height="76"/>
+	<text class="label" x="666" y="644">HAL</text>
+	<text class="small" x="648" y="668">내부 계약</text>
+
+	<rect class="box-blue" x="624" y="766" width="162" height="76"/>
+	<text class="label" x="642" y="798">Platform</text>
+	<text class="small" x="644" y="822">OS concrete</text>
+
+	<path class="line" marker-end="url(#arrow)" d="M 705 534 L 705 612"/>
+	<path class="line" marker-end="url(#arrow)" d="M 705 688 L 705 766"/>
+
+	<rect class="box-purple" x="832" y="536" width="144" height="76"/>
+	<text class="label" x="868" y="568">Engine</text>
+	<text class="small" x="858" y="592">실행 상태 소유</text>
+
+	<rect class="box-purple" x="832" y="690" width="144" height="76"/>
+	<text class="label" x="850" y="722">Modules</text>
+	<text class="small" x="850" y="746">동적 backend</text>
+
+	<path class="line" marker-end="url(#arrow)" d="M 786 650 L 832 590"/>
+	<path class="line" marker-end="url(#arrow)" d="M 904 612 L 904 690"/>
+
+	<text class="small" x="608" y="438">HAL은 별도 런타임 시스템이 아니라 Core와 Platform 사이의 private contract입니다.</text>
+
+	<rect class="panel" x="1074" y="362" width="450" height="464"/>
+	<text class="section" x="1106" y="405">Renderer 실행 경로</text>
+
+	<rect class="box-orange" x="1118" y="456" width="164" height="70"/>
+	<text class="label" x="1152" y="487">Launch</text>
+	<text class="small" x="1146" y="510">초기 입력 구성</text>
+
+	<rect class="box-purple" x="1320" y="456" width="164" height="70"/>
+	<text class="label" x="1354" y="487">Engine</text>
+	<text class="small" x="1348" y="510">Context 적용</text>
+
+	<rect class="box-purple" x="1118" y="588" width="164" height="70"/>
+	<text class="label" x="1144" y="619">Renderer</text>
+	<text class="small" x="1148" y="642">Command 생산</text>
+
+	<rect class="box" x="1320" y="588" width="164" height="70"/>
+	<text class="label" x="1340" y="619">Module ABI</text>
+	<text class="small" x="1350" y="642">Backend 로드</text>
+
+	<rect class="box-green" x="1118" y="720" width="164" height="70"/>
+	<text class="label" x="1152" y="751">Backend</text>
+	<text class="small" x="1138" y="774">DX11 / Vulkan</text>
+
+	<rect class="box-green" x="1320" y="720" width="164" height="70"/>
+	<text class="label" x="1372" y="751">GPU</text>
+	<text class="small" x="1340" y="774">Graphics API 호출</text>
+
+	<path class="line-green" marker-end="url(#arrowGreen)" d="M 1282 491 L 1320 491"/>
+	<path class="line-green" marker-end="url(#arrowGreen)" d="M 1402 526 L 1402 588"/>
+	<path class="line-green" marker-end="url(#arrowGreen)" d="M 1320 623 L 1282 623"/>
+	<path class="line-green" marker-end="url(#arrowGreen)" d="M 1200 658 L 1200 720"/>
+	<path class="line-green" marker-end="url(#arrowGreen)" d="M 1282 755 L 1320 755"/>
+
+	<path class="dash" d="M 1188 526 C 1170 558, 1170 566, 1188 588"/>
+	<text class="small" x="1108" y="838">LaunchContext는 초기 구성 입력, EngineContext는 실행 중 상태의 기준선입니다.</text>
+
+	<rect class="panel-strong" x="76" y="866" width="1448" height="82"/>
+	<text class="section" x="108" y="914">다음 초점</text>
+	<rect class="badge-blue" x="300" y="892" width="194" height="34" rx="17"/>
+	<text class="badge-text" x="328" y="914">Linux 안정화</text>
+	<text class="small" x="520" y="914">GPU 선택 · validation layer · resize · frame pacing</text>
+	<rect class="badge-purple" x="934" y="892" width="210" height="34" rx="17"/>
+	<text class="badge-text" x="962" y="914">Runtime 확장</text>
+	<text class="small" x="1170" y="914">ResourceManager · FrameQueue · Mesh / Material</text>
+</svg>
