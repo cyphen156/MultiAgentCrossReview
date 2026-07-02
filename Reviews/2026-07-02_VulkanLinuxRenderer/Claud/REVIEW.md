@@ -3,7 +3,7 @@ Review-ID: 2026-07-02_VulkanLinuxRenderer
 Author: Claude
 Baseline: 2026-07-02T13:26 sync | commit=unknown Source=93
 Session-Id:
-Status: Revised
+Status: Evidence-checked
 ---
 # Claude REVIEW — 2026-07-02_VulkanLinuxRenderer
 
@@ -106,3 +106,52 @@ Codex가 추가한 관찰, 즉 `NativeWindowInfo`가 window handle과 크기만 
 이 조정은 Codex 교차검증의 핵심 기여(계약 불일치의 구체적 실체, NativeWindowInfo의 구조적 한계)를 받아들여 패치 순서를 더 촘촘하게 만든 것이며, 초기 판단의 대전제(모듈 ABI 연결 우선, window/surface 소유권 확정은 별도 후속 단계, X11 windowed first-light 한정 사용)를 뒤집지는 않는다.
 
 Position: KEEP
+
+## 4. 증거 재확인
+
+## 4. 증거 재확인
+
+Codex REVIEW와 본 검토의 초기 판단이 인용한 핵심 파일들을 baseline mirror 기준으로 재확인한다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/DevLog/2026/26.07.01.txt : 다음 작업` (DevLog date: 2026-07-01)
+  #3_3 완료 이후 다음 작업으로 `CyphenRendererVulkan.so` 빌드/산출물 배치, Linux Vulkan surface 생성 위치 재검토, X11 의존성 소유 경계 정리가 기록되어 있음을 확인. 이번 검토 범위(README의 4개 핵심 질문)와 DevLog 기록이 1:1로 대응한다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/DevLog/Todos.txt : Renderer / Linux Porting`
+  Linux `CyphenRendererVulkan.so` 빌드 구성, export 주입, Linux Vulkan surface 경로 정리가 미완 항목으로 남아 있고, "Linux는 GUI가 기본 실행 조건이 아니다"라는 방향이 명시되어 있음을 확인. X11/Wayland를 windowed target의 선택 의존성으로 관리해야 한다는 결론의 1차 근거로 유효하다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/Source/Platform/Linux/Private/ModuleLoader.cpp : ModuleLoader::Load / ModuleLoader::FindSymbol`
+  `dlopen(<name>.so, RTLD_NOW | RTLD_LOCAL)` 후 `dlsym`으로 심볼을 찾는 계약이 존재함을 확인. Linux `.so`가 기존 Renderer Module ABI 이름 규칙(`GetRendererModuleApi`)을 그대로 따라야 한다는 판단의 직접 근거다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/Source/Modules/Renderer/Public/RendererModule.h : GET_RENDERER_MODULE_API_NAME / RendererModuleApi`
+  심볼 이름이 문자열 상수로 고정되어 있고 `RendererModuleApi` 함수표가 ABI 계약임을 확인. Linux 전용 별도 계약을 새로 만드는 대신 기존 ABI에 `.so`를 연결해야 한다는 결론과 일치한다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/Source/Modules/Renderer/Private/Renderer.cpp : Renderer::Initialize`
+  `moduleBinder.Bind(RendererModuleName)` → `GET_RENDERER_MODULE_API_NAME` 조회 흐름이 backend 교체 지점을 `GetRendererModuleApi` 단일 진입점으로 만든다는 판단을 뒷받침한다.
+
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/Private/VulkanRendererModule.cpp : GetRendererModuleApi`
+  현재 export가 `extern "C" __declspec(dllexport)`로 Windows 전용임을 확인. Linux `dlsym` 가능한 visibility-default export macro 정리가 #3_4 선행 작업이라는 결론이 파일상 근거가 있다.
+
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/HAL/Private/Surface.h : GetVulkanPlatformSurfaceExtensionName / CreateVulkanSurface`
+  HAL 계약이 `CreateVulkanSurface(VkInstance, const NativeWindowInfo&, VkSurfaceKHR*)` 포인터 시그니처로 선언되어 있음을 확인.
+
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Linux/Private/Surface.cpp : CreateVulkanSurface`
+  Linux 구현이 `VK_USE_PLATFORM_UXIX_KHR` 오타, `VkSurfaceKHR& outSurface` 참조 시그니처(헤더의 포인터 시그니처와 불일치), 빈 함수 본문, `bool` 반환 누락 상태임을 확인. "단순 미완성이 아니라 계약 불일치"라는 수정 결론이 파일 근거로 확인된다.
+
+- `Projects/CyphenEngine/baseline/Modules/Renderer/CyphenRendererVulkan/Source/Platform/Windows/Private/Surface.cpp : GetVulkanPlatformSurfaceExtensionName / CreateVulkanSurface`
+  Windows 구현은 HAL 헤더와 동일한 포인터 시그니처를 사용하며 `VK_KHR_WIN32_SURFACE_EXTENSION_NAME`/`vkCreateWin32SurfaceKHR`를 완결적으로 구현함을 확인. Linux 대비 완성도 격차가 명확히 대조된다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/Source/HAL/Public/NativeWindowInfo.h : NativeWindowInfo`
+  구조체가 `void* nativeWindowHandle`, `windowWidth`, `windowHeight`만 보유하며 display connection 필드가 없음을 확인. Xlib/XCB surface 생성에 필요한 `Display*`/connection 정보가 현재 계약에 빠져 있다는 판단이 확인된다. 이는 Linux surface 구현이 "함수 채우기" 수준을 넘어 계약 보강을 동반해야 함을 의미한다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/Source/Platform/Linux/Private/Launch.cpp : Launch::CreateLaunchContext`
+  Linux Launch가 X11 window를 생성하고 `LaunchContext.windowInfo`를 채우며 `CyphenRendererVulkan`을 강제 활성화하는 흐름이 존재함을 확인. 이를 영구 WindowSystem으로 확정하지 말고 first-light 검증 경로로 제한해야 한다는 판단의 근거가 된다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/CMakeLists.txt : find_package(X11 REQUIRED)` 및 UNIX link block
+  UNIX 경로에서 X11이 `REQUIRED`로 실행파일에 직접 링크됨을 확인. DevLog/Todos의 "X11/Wayland를 기본 실행 조건으로 고정하지 않는다"는 방향과 현재 CMake 사이의 긴장 관계가 실제로 존재한다.
+
+- `Projects/CyphenEngine/baseline/CyphenEngine/CMakeLists.txt : BuildArtifacts output layout`
+  `BuildArtifacts/Binaries/<Platform>/<Arch>/<Config>/` 산출물 규칙 자체는 엔진 CMake에 존재하나, `CyphenRendererVulkan` 쪽 Linux `add_library` CMake 타깃은 baseline에서 확인되지 않고 `.vcxproj`만 존재함을 확인. `.so` 산출물 배치 규칙은 있으나 Vulkan renderer module의 Linux 빌드 타깃 연결 자체가 아직 없다는 판단이 확인된다.
+
+모든 인용 경로와 심볼은 baseline mirror 구조(`CyphenEngine/Source/...`, `Modules/Renderer/CyphenRendererVulkan/Source/...`, `DevLog/...`) 안에서 대응 관계가 확인되며, Codex REVIEW가 제시한 증거와 본 검토의 초기 판단·수정 결론이 가리키는 파일이 일치한다. 새로 발견된 반증이나 인용 오류는 없다.
+
+Evidence-Status: CONFIRMED
