@@ -25,3 +25,4 @@
 ## Callback (사용자 개입 · append)
 
 - [2026-07-02] 랩탑 작업 시작. 입력 지연 문제 해결 후 #3_4 Vulkan 렌더러 Linux 작업의 멀티에이전트 프로세스를 가동한다.
+- [2026-07-02] 추가 질문: (1) Linux renderer module 빌드 타깃을 CyphenEngine 실행파일과 동일한 CMake 산출물/빌드 규격으로 둘지 결정한다. (2) 어제 마감 직전 고민했던 Linux Launch의 main X server 연결 초기화 책임과 전달 계약을 결정한다.
