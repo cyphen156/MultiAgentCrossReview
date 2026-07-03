@@ -24,6 +24,29 @@ Actual review instances are personal working records. Keep them in the configure
 
 `Packages/WorkbenchStateSync/` provides button-like pull/push for the mutable state that was removed from the public repository.
 
+## Current Example
+
+See `Examples/WorkbenchState/` for a sanitized, tracked example of the state layout that WorkbenchStateSync moves:
+
+```text
+UserSettings/preferences.md
+Projects/ExampleProject/RULES.md
+Reviews/2026-07-04_ExampleReview/README.md
+Reviews/2026-07-04_ExampleReview/Claud/REVIEW.md
+Reviews/2026-07-04_ExampleReview/Codex/REVIEW.md
+Reviews/2026-07-04_ExampleReview/DECISION.md
+```
+
+Real files with that shape belong in the configured state repository/worktree, not under public `Reviews/<review-id>/`.
+
+Minimal daily flow:
+
+```powershell
+.\Packages\WorkbenchStateSync\Start.ps1
+.\Reviews\run-review.ps1 -Topic 2026-07-04_ExampleReview -Status
+.\Packages\WorkbenchStateSync\Finish.ps1 -CommitMessage 'workbench state: update review'
+```
+
 MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독립적으로 판단하고, 이후 서로의 주장과 근거를 교차 검증하도록 만드는 공개 검토 워크벤치입니다.
 
 목표는 에이전트 사이의 합의를 빠르게 만드는 것이 아닙니다.  
