@@ -14,7 +14,6 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 |---|---|---|
 | `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, 검토 오케스트레이터(`run-review.ps1`), 검토 템플릿(`_TEMPLATE`), WorkbenchStateSync 도구 사본, 정제된 실예시(`Examples/`) |
 | [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 MIT 도구 | 사용자 관리 워크벤치 상태(`UserSettings/`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/`)를 사용자 지정 상태 저장소와 동기화하는 독립 도구 |
-| 사용자 상태 저장소 | 사용자 지정(보통 비공개) | 실제 `UserSettings/`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/` 기록 |
 | [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 MIT 세션 동기화 도구 | Codex·Claude 원본 세션 JSONL을 private session vault로 운반하는 Start/Finish 스크립트와 예시 |
 
 공개 저장소는 프로세스·템플릿·도구·정제된 실예시만 두고, 실제 검토 인스턴스(`Reviews/<review-id>/`)는 사용자 관리 상태로 취급합니다.  
