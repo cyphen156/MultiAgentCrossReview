@@ -29,7 +29,9 @@ Read-before-write gates:
 - Do not modify the source project repository listed in `../Projects/projects.json` from this workbench unless explicitly asked.
 - `Projects/<name>/baseline/` is the immutable reference mirror for review.
 - `Projects/<name>/edit/Claud/` and `Projects/<name>/edit/Codex/` are local agent-specific edit copies.
-- Public review artifacts belong under `Reviews/`. Raw conversation/session transport belongs outside this public workbench.
+- The public workbench keeps only review framework files under `Reviews/`: `README.md`, `_TEMPLATE/`, and review tooling.
+- Actual review instances (`Reviews/<review-id>/`) are user-managed workbench state. Keep them in the configured state repository/worktree, not in the public workbench history.
+- Raw conversation/session transport belongs outside this public workbench.
 - Initial agent judgments must be independent: do not read the other agent's initial answer before writing your own initial answer.
 - After both initial answers exist, cross-review the other answer and preserve disagreements as useful signal.
 - User callbacks are review inputs. Treat them as constraints or evidence to evaluate, not as automatic truth.
@@ -86,10 +88,10 @@ Concrete DevLog path, encoding, template, and spacing are project-specific and b
 
 Detailed review record rules live in `../Reviews/README.md`.
 
-- `Reviews/<review-id>/README.md` defines the topic, baseline, scope, status, and callbacks.
+- `Reviews/<review-id>/README.md` defines the topic, baseline, scope, status, and callbacks inside the user-managed state workspace.
 - Each agent writes only its own `REVIEW.md`; the other agent's folder is read-only.
-- Current truth is the working tree file. History is git. Update `REVIEW.md` or `DECISION.md` instead of stacking numbered replacement files.
+- Current truth is the user-managed state working tree file. History belongs in the configured state repository. Update `REVIEW.md` or `DECISION.md` instead of stacking numbered replacement files.
 - Code changes proposed during review happen in local `Projects/<name>/edit/<agent>/` copies.
-- Only accepted candidate patches or evidence artifacts should be committed under `Reviews/<review-id>/<agent>/artifacts/`.
+- Accepted candidate patches or evidence artifacts may be kept under `Reviews/<review-id>/<agent>/artifacts/` only in the user-managed state workspace unless explicitly sanitized for public release.
 - Final source application is controlled by the user and should follow `DECISION.md`.
 - Topics before 2026-06-28 may use the legacy numbered-file layout. Preserve them as legacy; do not migrate unless explicitly asked.

@@ -1,5 +1,29 @@
 # MultiAgentCrossReview
 
+## Public / Private Boundary
+
+This repository is the public MultiAgentCrossReview framework.
+
+Public content belongs here:
+
+- common workbench rules and routing docs;
+- review templates under `Reviews/_TEMPLATE/**`;
+- review process docs such as `Reviews/README.md`;
+- review tooling such as `Reviews/run-review.ps1`;
+- package/tooling code and public examples.
+
+User-managed state does not belong in this public repository:
+
+- actual `Reviews/<review-id>/` instances;
+- user callbacks and user-derived review context;
+- agent `REVIEW.md` and user `DECISION.md` records from real work;
+- candidate artifacts produced during real state-backed review work;
+- raw session transport data.
+
+Actual review instances are personal working records. Keep them in the configured state repository/worktree, then pull public framework fixes from this repository as upstream changes.
+
+`Packages/WorkbenchStateSync/` provides button-like pull/push for the mutable state that was removed from the public repository.
+
 MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독립적으로 판단하고, 이후 서로의 주장과 근거를 교차 검증하도록 만드는 공개 검토 워크벤치입니다.
 
 목표는 에이전트 사이의 합의를 빠르게 만드는 것이 아닙니다.  
@@ -9,20 +33,20 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 | 저장소 | 역할 | 포함하는 것 |
 |---|---|---|
-| `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, RuleSync 엔진, 독립 판단(REVIEW.md), 교차검증, 증거, Callback, 최종 결정(DECISION.md) |
-| [`MultiAgentPrivateRulesSync`](https://github.com/cyphen156/MultiAgentPrivateRulesSync) | 공개 MIT 예시 vault | private rules vault를 어떻게 구성하는지 보여주는 샘플 `UserSettings/`·`Projects/<name>/RULES.md` |
+| `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, WorkbenchStateSync 엔진, 리뷰 프로세스와 템플릿 |
+| `MultiAgentWorkbenchStateSync` | 공개 MIT 예시 state repo | 사용자별 워크벤치 상태 저장소를 어떻게 구성하는지 보여주는 샘플 `UserSettings/`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/` |
 | [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 MIT 세션 동기화 도구 | Codex·Claude 원본 세션 JSONL을 private session vault로 운반하는 Start/Finish 스크립트와 예시 |
 
-이 저장소의 `Reviews/`가 공개 검토 기록의 기준입니다.  
+이 저장소의 `Reviews/`는 공개 검토 기록 저장소가 아니라 프로세스 문서, 템플릿, 오케스트레이터를 담는 framework 영역입니다.  
 원문 대화(JSONL)는 시스템 지침·도구 출력·절대경로까지 포함한 실행 로그라서 이 저장소에 두지 않고 `AgentSessionSync`가 따로 운반합니다.
 
-`RuleSync`와 `AgentSessionSync`는 둘 다 선택 기능입니다.  
-한 대의 머신에서만 작업하거나 로컬 룰·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
-여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 만든 **private repository**를 대상으로 경로를 설정해 사용합니다.
+`WorkbenchStateSync`와 `AgentSessionSync`는 둘 다 선택 기능입니다.  
+한 대의 머신에서만 작업하거나 로컬 상태·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
+여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 지정한 repository/worktree를 대상으로 경로를 설정해 사용합니다.
 
-- 룰 동기화: `Packages/RuleSync/`가 private rules vault와 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`를 동기화합니다.
+- 워크벤치 상태 동기화: `Packages/WorkbenchStateSync/`가 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, 실제 `Reviews/<review-id>/**`를 동기화합니다.
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
-- 실제 private vault 이름, URL, 절대경로는 공개 README에 고정하지 않습니다.
+- 실제 state repository 이름, URL, 절대경로는 공개 README에 고정하지 않습니다.
 
 ## 빠른 시작
 
@@ -35,10 +59,10 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 .\sync.ps1 -Project ExampleProject # 특정 프로젝트
 .\sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
 
-# 3) 선택: 여러 머신에서 private rule vault를 공유해야 할 때만 RuleSync 설정
-Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\rulesync.config.psd1
-# rulesync.config.psd1의 VaultRoot를 사용자가 만든 private rules vault clone 경로로 수정
-.\Packages\RuleSync\rulesync.ps1 -Direction Pull
+# 3) 선택: 여러 머신에서 워크벤치 상태를 공유해야 할 때만 WorkbenchStateSync 설정
+Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
+# workbenchstatesync.config.psd1의 VaultRoot를 사용자가 지정한 state repo/worktree 경로로 수정
+.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Pull
 
 # 4) 새 검토 주제 생성 + 진행
 Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
@@ -80,7 +104,7 @@ Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
 UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
-Packages/RuleSync/          private markdown rule sync engine (public package)
+Packages/WorkbenchStateSync/ user-managed workbench state sync engine (public package)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
   projects.example.json     공개 예시 등록부
@@ -90,7 +114,7 @@ Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/*
     baseline/               읽기전용 미러 (sync가 채움)
     edit/Claud, edit/Codex  에이전트별 코드 편집 사본
 
-Reviews/                    검토 기록
+Reviews/                    공개 review framework + 로컬/동기화 대상 실제 검토 인스턴스
   <review-id>/
     README.md               주제 · 기준 커밋 · 범위 · 상태 · Callback
     Claud/REVIEW.md + artifacts/
@@ -106,8 +130,8 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 실제 등록부 `Projects/projects.json`도 로컬 전용이며, 공개 저장소에는 `Projects/projects.example.json`만 둡니다.  
 대상 프로젝트 이름, 절대경로, 코드는 공개 저장소에 커밋하지 않습니다.
 
-`Packages/RuleSync/`는 공개 패키지이지만 실제 vault 경로는 공개하지 않습니다.  
-로컬 설정 파일(`Packages/RuleSync/rulesync.config.psd1`, `RuleSync.local.psd1`)은 gitignore 대상입니다.
+`Packages/WorkbenchStateSync/`는 공개 패키지이지만 실제 state repo 경로는 공개하지 않습니다.  
+로컬 설정 파일(`Packages/WorkbenchStateSync/workbenchstatesync.config.psd1`, `WorkbenchStateSync.local.psd1`)은 gitignore 대상입니다.
 
 ## 규칙 계층
 
@@ -135,48 +159,48 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 프로젝트별 DevLog는 작성 시각만으로 범위를 정하지 않습니다.  
 각 프로젝트 룰이 이전 DevLog 이후의 대상 커밋 범위를 정합니다(예: auto-generated DevLog 커밋 자체는 요약 범위에서 제외).
 
-## RuleSync
+## WorkbenchStateSync
 
-`UserSettings/**/*.md`와 `Projects/<name>/RULES.md`는 공개 저장소에 커밋하지 않는 로컬 룰입니다.  
-여러 머신에서 이 파일을 이어 써야 할 때만 `Packages/RuleSync/`를 사용해 사용자가 직접 만든 private rules vault와 동기화합니다.
+`UserSettings/**/*.md`, `Projects/<name>/RULES.md`, 실제 `Reviews/<review-id>/**`는 공개 프레임워크에서 빠지는 사용자별 상태 데이터입니다.  
+여러 머신이나 별도 저장소에서 이 상태를 이어 쓰려면 `Packages/WorkbenchStateSync/`를 사용해 사용자가 지정한 저장소와 동기화합니다.
 
 원칙:
 
-- private rules vault = private markdown rule SSOT.
-- 이 워크트리의 `UserSettings/`와 `Projects/<name>/RULES.md` = 에이전트가 실제로 읽는 materialized copy.
+- 공개 MultiAgentCrossReview repo = 프로세스, 템플릿, 사용법, 패키지 도구.
+- 상태 저장소 = 사용자가 지정한 repo/worktree. private일 수도 public일 수도 있지만, 담는 데이터 성격상 private를 권장합니다.
+- 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized state.
 - Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
-- `Projects/<name>/baseline/**`와 `Projects/<name>/edit/**`는 RuleSync 대상이 아닙니다.
-- `README.md` 파일은 RuleSync 대상이 아닙니다. 공개 안내 문서는 공개 repo에 남기고, private vault에는 실제 룰 데이터만 둡니다.
+- `Projects/<name>/baseline/**`와 `Projects/<name>/edit/**`는 WorkbenchStateSync 대상이 아닙니다.
+- `Reviews/README.md`, `Reviews/_TEMPLATE/**`, `Reviews/run-review.ps1`은 공개 프레임워크 파일이므로 상태 저장소로 동기화하지 않습니다.
 
 설정:
 
 ```powershell
-Copy-Item .\Packages\RuleSync\rulesync.config.example.psd1 .\Packages\RuleSync\rulesync.config.psd1
+Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
 ```
 
-`rulesync.config.psd1`은 gitignore 대상입니다. 여기에 사용자의 private vault 경로를 지정합니다.
+`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 사용자가 지정한 상태 저장소 경로를 설정합니다.
 
 예:
 
 ```powershell
-.\Packages\RuleSync\rulesync.ps1 -Direction Pull   # private vault -> 현재 워크트리
-.\Packages\RuleSync\rulesync.ps1 -Direction Push   # 현재 워크트리 -> private vault
+.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Pull
+.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Push
 ```
 
 git pull/push까지 한 번에 처리하려면 래퍼를 씁니다(프로젝트 sync처럼 단순):
 
 ```powershell
-.\Packages\RuleSync\Start.ps1    # vault git pull -> 워크트리로 materialize
-.\Packages\RuleSync\Finish.ps1   # 워크트리 룰 -> vault commit/push
+.\Packages\WorkbenchStateSync\Start.ps1
+.\Packages\WorkbenchStateSync\Finish.ps1
 ```
 
-작업표시줄/더블클릭용 `Start.cmd`·`Finish.cmd`도 있습니다. vault에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
+작업표시줄/더블클릭용 `Start.cmd`·`Finish.cmd`도 있습니다. 상태 저장소에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
 
-RuleSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다.  
+WorkbenchStateSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다.  
 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
 
-공개 예시 vault 구조는 별도 MIT 공개 repo [MultiAgentPrivateRulesSync](https://github.com/cyphen156/MultiAgentPrivateRulesSync)로 제공합니다.  
-실제 개인 룰 저장소는 이 예시를 참고해 사용자가 직접 **private repository**로 만듭니다.
+기존 공개 예시 repo `MultiAgentPrivateRulesSync`는 WorkbenchStateSync 예시 저장소로 이름과 설명을 바꿔 재사용할 수 있습니다.
 
 ## 코드 차이와 증거
 

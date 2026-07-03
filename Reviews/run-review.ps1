@@ -14,6 +14,8 @@
     .\run-review.ps1 -Topic 2026-06-28_Example -Steps 8   # 끝까지
     .\run-review.ps1 -Topic 2026-06-28_Example -Status    # 현재 상태만
     .\run-review.ps1 -Topic 2026-06-28_Example -DryRun    # 호출/기록 없이 프롬프트 미리보기
+    .\run-review.ps1 -Topic 2026-06-28_Example -CommitToCurrentRepo
+        # state repo/worktree에서만 사용. public repo에서는 실제 리뷰 인스턴스를 커밋하지 않는다.
 #>
 
 param(
@@ -23,6 +25,7 @@ param(
     [switch] $Yes,
     [switch] $DryRun,
     [switch] $Status,
+    [switch] $CommitToCurrentRepo, # 위험: 현재 repo에 리뷰 인스턴스를 커밋. state repo/worktree에서만 사용.
     [switch] $NoPause          # 종료 전 대기 생략 (자동화/비대화형 호출용)
 )
 
@@ -198,9 +201,14 @@ Status: $($step.NewStatus)
     Set-Content -Path $step.Out -Value ($front + $newBody + "`n") -Encoding utf8 -NoNewline
 
     $rel = $step.Out.Substring($RepoRoot.Length + 1).Replace('\', '/')
-    git -C $RepoRoot add -- $rel | Out-Null
-    git -C $RepoRoot commit -m "review($Topic): $($step.Agent) $($step.Phase)" | Out-Null
-    Write-Host "기록·커밋: $rel  (Status=$($step.NewStatus))" -ForegroundColor Green
+    if ($CommitToCurrentRepo) {
+        git -C $RepoRoot add -- $rel | Out-Null
+        git -C $RepoRoot commit -m "review($Topic): $($step.Agent) $($step.Phase)" | Out-Null
+        Write-Host "기록·커밋: $rel  (Status=$($step.NewStatus))" -ForegroundColor Green
+    }
+    else {
+        Write-Host "기록: $rel  (Status=$($step.NewStatus), git commit skipped; use state repo/worktree)" -ForegroundColor Green
+    }
 }
 
 function Show-Status {

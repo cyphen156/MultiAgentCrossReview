@@ -25,10 +25,16 @@
 
 # Optional machine-specific configuration
 /local.settings.psd1
-/RuleSync.local.psd1
-/Packages/RuleSync/rulesync.config.psd1
+/WorkbenchStateSync.local.psd1
+/Packages/WorkbenchStateSync/workbenchstatesync.config.psd1
 
 # Local user settings. Keep only the public guide tracked.
 /UserSettings/**
 !/UserSettings/
 !/UserSettings/README.md
+
+# Actual cross-review instances are private working records.
+# Keep only the public review framework and template in this repository.
+/Reviews/*/
+!/Reviews/_TEMPLATE/
+!/Reviews/_TEMPLATE/**

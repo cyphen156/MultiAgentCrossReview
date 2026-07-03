@@ -1,5 +1,25 @@
 # Reviews — 멀티 에이전트 설계 검토 로그
 
+## Public / Private Boundary
+
+`Reviews/` in the public MultiAgentCrossReview repository is a framework area, not a public archive of real review instances.
+
+Public repository content:
+
+- `Reviews/README.md`
+- `Reviews/_TEMPLATE/**`
+- `Reviews/run-review.ps1`
+
+User-managed state repository content:
+
+- `Reviews/<review-id>/README.md`
+- `Reviews/<review-id>/*/REVIEW.md`
+- `Reviews/<review-id>/DECISION.md`
+- `Reviews/<review-id>/**/artifacts/**`
+- user callbacks, user-derived context, and real review evidence from private work
+
+Run real reviews in the configured state repository/worktree. Pull framework fixes from the public repository into that state workspace.
+
 Codex와 Claude가 같은 주제에 먼저 독립적으로 판단하고, 서로의 결론을 양방향으로 교차 검증하는 공간이다.
 `Projects/<name>/baseline/` 미러가 읽기 전용 기준선이고, `Reviews/`는 판단·반박·근거·사용자 개입·최종 결정을 보존한다.
 
