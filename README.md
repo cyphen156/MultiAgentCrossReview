@@ -12,7 +12,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 | 저장소 | 역할 | 포함하는 것 |
 |---|---|---|
-| `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, 검토 오케스트레이터(`run-review.ps1`), 검토 템플릿(`_TEMPLATE`), WorkbenchStateSync 도구 사본, 정제된 실예시(`Examples/`) |
+| `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, 검토 오케스트레이터(`run-review.ps1`), 검토 템플릿(`_TEMPLATE`), 외부 sync 도구 어댑터, 정제된 실예시(`Examples/`) |
 | [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 MIT 도구 | 사용자 관리 워크벤치 상태(`UserSettings/`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/`)를 사용자 지정 상태 저장소와 동기화하는 독립 도구 |
 | [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 MIT 세션 동기화 도구 | Codex·Claude 원본 세션 JSONL을 private session vault로 운반하는 Start/Finish 스크립트와 예시 |
 
@@ -23,7 +23,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 한 대의 머신에서만 작업하거나 로컬 상태·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
 여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 만든 **상태 저장소**를 대상으로 경로를 설정해 사용합니다.
 
-- 상태 동기화: `Packages/WorkbenchStateSync/`가 상태 저장소와 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 동기화합니다.
+- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 외부 `MultiAgentWorkbenchStateSync` 도구를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다.
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
 - 실제 상태 저장소 이름, URL, 절대경로는 공개 README에 고정하지 않습니다.
 
@@ -49,10 +49,10 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 작업표시줄 고정용 Windows `.lnk` 바로가기는 로컬에서 생성합니다.
 
 ```powershell
-.\Create-Shortcuts.ps1
+.\Launchers\Create-Shortcuts.ps1
 ```
 
-생성된 `Shortcuts/` 폴더는 gitignore 대상입니다.
+생성된 `Launchers\Shortcuts\` 폴더는 gitignore 대상입니다.
 
 특정 패키지만 실행할 수도 있습니다.
 
@@ -84,7 +84,8 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 # 3) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 설정
 Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
-# workbenchstatesync.config.psd1의 VaultRoot를 사용자가 만든 상태 저장소 clone 경로로 수정
+# workbenchstatesync.config.psd1의 ToolRoot를 외부 MultiAgentWorkbenchStateSync clone 경로로 수정
+# 상태 저장소 VaultRoot는 외부 MultiAgentWorkbenchStateSync 쪽 config에서 설정
 .\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize
 
 # 4) 새 검토 주제 생성 + 진행
@@ -131,7 +132,7 @@ UserSettings/               개인 설정 공간 (README만 공개, 하위 파�
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (폴더=멤버십)
-Create-Shortcuts.ps1        통합 Start/Finish 작업표시줄용 .lnk 생성기
+Launchers/                  통합/수동 실행용 Windows 런처와 작업표시줄용 .lnk 생성기
 Packages/WorkbenchStateSync/  외부 상태 sync 도구 호출 어댑터 (외부 레포 canonical)
 Packages/AgentSessionSync/    외부 세션 sync 도구 호출 어댑터 (외부 레포 canonical)
 ProjectSync/                내장·필수 프로젝트 미러 버튼 (루트 sync.ps1 감쌈, 원클릭 밖)
@@ -155,7 +156,7 @@ Reviews/                    검토 프레임워크 (공개)
     Codex/REVIEW.md + artifacts/
     DECISION.md             사용자 최종 판정
 
-sync.ps1 / sync.cmd         projects.json 구동 미러 동기화 (ProjectSync가 감쌈)
+sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync가 감쌈)
 ```
 
 `Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외합니다.  
@@ -195,17 +196,16 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화 (ProjectSync�
 ## WorkbenchStateSync
 
 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, 실제 `Reviews/<review-id>/`는 공개 저장소에 커밋하지 않는 로컬 상태입니다.  
-여러 머신에서 이 상태를 이어 써야 할 때만 `Packages/WorkbenchStateSync/`를 사용해 사용자가 직접 만든 상태 저장소와 동기화합니다.
+여러 머신에서 이 상태를 이어 써야 할 때 `Packages/WorkbenchStateSync/` 어댑터가 외부 독립 도구 `MultiAgentWorkbenchStateSync`를 호출합니다.
 
 원칙:
 
+- 외부 `MultiAgentWorkbenchStateSync` repo = 상태 동기화 도구의 canonical 구현.
+- 이 워크벤치의 `Packages/WorkbenchStateSync/` = `ToolRoot` 아래 외부 도구 `Start.ps1` / `Finish.ps1`를 호출하는 얇은 어댑터.
 - 상태 저장소 = 워크벤치 개인 상태의 SSOT (룰·설정·실제 검토 기록).
 - 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized copy.
 - Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
-- `Projects/<name>/baseline/**`와 `Projects/<name>/edit/**`는 동기화 대상이 아닙니다.
-- 공개 프레임워크 파일(`README.md`, `Reviews/README.md`, `Reviews/_TEMPLATE/**`, `Reviews/run-review.ps1`)은 동기화 대상이 아닙니다. 공개 안내·도구는 공개 repo에 남기고, 상태 저장소에는 실제 상태 데이터만 둡니다.
-
-이 도구는 매니페스트 기반의 기계적 동기화입니다. 대상 원격이 비공개인지 공개인지는 도구가 판단하지 않으며, **무엇을 올릴지**는 위 포함/제외 목록이, **어디로 올릴지**는 사용자 설정이 정합니다. Push 시 토큰류 유출을 막기 위한 시크릿 스캔만 안전장치로 남아 있습니다.
+- 동기화 범위, 충돌 처리, 시크릿 스캔, VaultRoot 설정은 외부 `MultiAgentWorkbenchStateSync` 도구가 소유합니다.
 
 설정:
 
@@ -213,30 +213,16 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화 (ProjectSync�
 Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
 ```
 
-`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 사용자의 상태 저장소 경로를 지정합니다.
+`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 외부 `MultiAgentWorkbenchStateSync` clone 경로(`ToolRoot`)를 지정합니다. 상태 저장소 `VaultRoot`는 외부 도구 쪽 config에서 지정합니다.
 
 예:
 
 ```powershell
-.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Pull   # 상태 저장소 -> 현재 워크트리
-.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Push   # 현재 워크트리 -> 상태 저장소
+.\Packages\WorkbenchStateSync\Start.ps1    # 외부 도구 Start.ps1 위임
+.\Packages\WorkbenchStateSync\Finish.ps1   # 외부 도구 Finish.ps1 위임
 ```
 
-git pull/push까지 한 번에 처리하려면 래퍼를 씁니다(프로젝트 sync처럼 단순):
-
-```powershell
-.\Packages\WorkbenchStateSync\Start.ps1    # 상태 저장소 git pull -> 워크트리로 materialize
-.\Packages\WorkbenchStateSync\Finish.ps1   # 워크트리 상태 -> 상태 저장소 commit/push
-```
-
-작업표시줄 고정용 `.lnk`는 `Packages/WorkbenchStateSync/Create-Shortcuts.ps1`로 생성합니다. 생성된 `Shortcuts/` 폴더는 gitignore 대상입니다. 상태 저장소에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
-
-WorkbenchStateSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다.  
-충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.
-
-동기화 도구 자체는 별도 MIT 공개 repo [MultiAgentWorkbenchStateSync](https://github.com/cyphen156/MultiAgentWorkbenchStateSync)로도 제공합니다.  
-SSOT는 이 워크벤치의 `Packages/WorkbenchStateSync/`이며, 독립 공개 repo는 여기서 발행하는 배포 대상입니다.
-실제 개인 상태 저장소는 사용자가 직접 **상태 저장소**로 만들어 경로를 지정합니다.
+작업표시줄 고정용 `.lnk`는 루트 `Launchers/Create-Shortcuts.ps1`로 한곳에서 생성합니다. 생성된 `Launchers/Shortcuts/` 폴더는 gitignore 대상입니다.
 
 ## AgentSessionSync 패키지 어댑터
 

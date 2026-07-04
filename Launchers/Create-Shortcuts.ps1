@@ -16,13 +16,19 @@ $items = @(
         Name = 'Start'
         Cmd = 'Start.cmd'
         Icon = "$env:SystemRoot\System32\shell32.dll,137"
-        Description = 'Start WorkbenchStateSync'
+        Description = 'Start configured workbench sync tools'
     },
     @{
         Name = 'Finish'
         Cmd = 'Finish.cmd'
         Icon = "$env:SystemRoot\System32\shell32.dll,131"
-        Description = 'Finish WorkbenchStateSync'
+        Description = 'Finish configured workbench sync tools'
+    },
+    @{
+        Name = 'ProjectSync'
+        Cmd = 'ProjectSync.cmd'
+        Icon = "$env:SystemRoot\System32\shell32.dll,167"
+        Description = 'Refresh the configured project mirror'
     }
 )
 

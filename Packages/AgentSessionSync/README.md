@@ -34,10 +34,10 @@ Pull raw sessions through AgentSessionSync:
 .\Packages\AgentSessionSync\Start.ps1
 ```
 
-Create local taskbar shortcuts:
+Taskbar shortcuts are generated centrally from the workbench root:
 
 ```powershell
-.\Packages\AgentSessionSync\Create-Shortcuts.ps1
+.\Launchers\Create-Shortcuts.ps1
 ```
 
 Push raw sessions through AgentSessionSync:

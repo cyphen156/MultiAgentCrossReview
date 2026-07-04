@@ -19,9 +19,7 @@
 # Local build and scratch artifacts
 /BuildArtifacts/
 /Temp/
-/Shortcuts/
-/Packages/*/Shortcuts/
-/ProjectSync/Shortcuts/
+/Launchers/Shortcuts/
 *.user
 *.log
 *.stackdump

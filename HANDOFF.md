@@ -18,7 +18,7 @@ The configured state repository may be private or public. Choose visibility acco
 
 1. Clone this public workbench repository.
 2. Clone or create the user-managed state repository.
-3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `VaultRoot` to the state repository path.
+3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `ToolRoot` to the local MultiAgentWorkbenchStateSync clone. Configure `VaultRoot` in that external tool's own config.
 4. Optional: create ignored `Packages/AgentSessionSync/agentsessionsync.config.psd1` from the example and set `ToolRoot` to the local AgentSessionSync clone.
 5. Create ignored `Projects/projects.json` from `Projects/projects.example.json` and set machine-local source project paths.
 6. Pull configured state/session packages into the workbench:
@@ -30,7 +30,7 @@ The configured state repository may be private or public. Choose visibility acco
 Create local taskbar shortcuts when needed:
 
 ```powershell
-.\Create-Shortcuts.ps1
+.\Launchers\Create-Shortcuts.ps1
 ```
 
 Root `Start.ps1` runs every external sync adapter under `Packages/` (folder = membership). Adapters with no configured external tool are reported as `SKIP`, not as fatal setup errors.
@@ -51,7 +51,7 @@ Push configured state/session packages:
 
 Root `Finish.ps1` continues across packages, prints a `Package | Action | Result | Reason` summary table, and returns non-zero if any package fails.
 
-Generated `Shortcuts/` folders are local-only and ignored by git.
+Generated `Launchers\Shortcuts\` files are local-only and ignored by git.
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 

@@ -34,3 +34,5 @@ Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .
 ```
 
 루트 `Start.ps1` / `Finish.ps1`는 `Packages/` 아래 외부 sync 어댑터를 한 번에 실행하는데, 이 패키지도 거기 포함됩니다(폴더에 있는 것 자체가 등록). 프로젝트 미러 갱신은 별개이며 루트 `ProjectSync/Start.ps1`입니다.
+
+작업표시줄 고정용 `.lnk`는 워크벤치 루트의 `Launchers/Create-Shortcuts.ps1`로 한곳에서 생성합니다.
