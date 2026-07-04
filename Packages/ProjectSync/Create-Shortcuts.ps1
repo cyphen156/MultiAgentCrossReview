@@ -25,7 +25,7 @@ foreach ($item in $items) {
     $shortcutPath = Join-Path $OutputDirectory "$($item.Name).lnk"
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = "$env:SystemRoot\System32\cmd.exe"
-    $shortcut.Arguments = "/c `"$cmdPath`""
+    $shortcut.Arguments = "/k `"$cmdPath`""
     $shortcut.WorkingDirectory = $PSScriptRoot
     $shortcut.IconLocation = $item.Icon
     $shortcut.Description = $item.Description
