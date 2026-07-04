@@ -27,6 +27,8 @@ The configured state repository may be private or public. Choose visibility acco
 .\Start.ps1
 ```
 
+Root `Start.ps1` reads `Packages/aggregate.psd1` and runs only packages listed there. Missing local configs are reported as `SKIP`, not as fatal setup errors.
+
 7. Rebuild the local source mirror only when needed:
 
 ```powershell
@@ -41,16 +43,18 @@ Push configured state/session packages:
 .\Finish.ps1
 ```
 
+Root `Finish.ps1` continues across packages, prints a `Package | Action | Result | Reason` summary table, and returns non-zero if any package fails.
+
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 
-ProjectSync is deliberately not included in root `Start.ps1` / `Finish.ps1`. Run it manually only when the project mirror needs refresh.
+ProjectSync is deliberately not registered in `Packages/aggregate.psd1`. Run it manually only when the project mirror needs refresh.
 
 ## Boundaries
 
 - Public framework files stay in this repository: `Common/`, `Reviews/README.md`, `Reviews/_TEMPLATE/**`, `Reviews/run-review.ps1`, package code, examples.
 - User-managed state is synchronized by WorkbenchStateSync: `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, real `Reviews/<review-id>/**`.
 - Excluded from WorkbenchStateSync: `Projects/<name>/baseline/**`, `Projects/<name>/edit/**`, build outputs, logs, raw session JSONL, credentials, tokens, local machine config.
-- Raw Codex/Claude session transport remains an AgentSessionSync concern.
+- Raw Codex/Claude session transport remains an AgentSessionSync concern. The standalone AgentSessionSync repo is canonical; this workbench keeps only a thin package adapter.
 
 ## Current Known Follow-Up
 

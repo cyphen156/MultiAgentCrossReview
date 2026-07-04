@@ -4,6 +4,8 @@ This package is a local button adapter for the standalone AgentSessionSync tool.
 
 AgentSessionSync moves raw Codex/Claude session data. It is intentionally separate from WorkbenchStateSync, which moves review/workbench state such as `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, and `Reviews/<review-id>/**`.
 
+The standalone AgentSessionSync repository is canonical. This workbench package does not copy session-sync logic; it validates the local `ToolRoot`, delegates to that tool's `Start.ps1` / `Finish.ps1`, and forwards common root options where they are part of the adapter contract.
+
 ## Configuration
 
 Copy the example config to the ignored local config path:
@@ -39,3 +41,5 @@ Push raw sessions through AgentSessionSync:
 ```
 
 The root `Start.ps1` / `Finish.ps1` also run this package when it is configured.
+
+If no local config exists, or if the configured external scripts are missing, the adapter skips with a message instead of failing the entire aggregate run.

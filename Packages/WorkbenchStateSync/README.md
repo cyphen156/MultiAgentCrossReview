@@ -6,6 +6,8 @@ The public MultiAgentCrossReview repository keeps process, templates, docs, and 
 
 The target repository may be private or public. Choose its visibility according to the data you put there.
 
+This package copy is canonical for the workbench implementation. The standalone public `MultiAgentWorkbenchStateSync` repository is published from this package, not developed as a separate competing source.
+
 ## Sync Scope
 
 Included:
@@ -63,7 +65,7 @@ Push state from the current workbench into the configured repository, then commi
 .\Packages\WorkbenchStateSync\Finish.ps1
 ```
 
-The repository root `Start.ps1` / `Finish.ps1` also run this package when it is configured. Project mirror refresh is separate and belongs to `Packages/ProjectSync/Start.ps1`.
+The repository root `Start.ps1` / `Finish.ps1` run this package only because it is explicitly listed in `Packages/aggregate.psd1`. Project mirror refresh is separate and belongs to `Packages/ProjectSync/Start.ps1`.
 
 Lower-level copy operations are available directly:
 
