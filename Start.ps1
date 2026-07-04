@@ -11,18 +11,18 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ManifestPath = Join-Path $RepoRoot 'Packages\aggregate.psd1'
+$SyncToolsPath = Join-Path $RepoRoot 'Packages\sync-tools.json'
 
 function Resolve-RepoPath([string] $Path) {
     if ([IO.Path]::IsPathRooted($Path)) { return [IO.Path]::GetFullPath($Path) }
     return [IO.Path]::GetFullPath((Join-Path $RepoRoot $Path))
 }
 
-function Import-AggregateManifest {
-    if (-not (Test-Path -LiteralPath $ManifestPath)) {
-        throw "Aggregate manifest not found: $ManifestPath"
+function Import-SyncTools {
+    if (-not (Test-Path -LiteralPath $SyncToolsPath)) {
+        throw "Sync tools list not found: $SyncToolsPath"
     }
-    return Import-PowerShellDataFile -LiteralPath $ManifestPath
+    return Get-Content -Raw -LiteralPath $SyncToolsPath | ConvertFrom-Json
 }
 
 function Test-ManifestSelection([string] $Name) {
@@ -31,9 +31,9 @@ function Test-ManifestSelection([string] $Name) {
     return $true
 }
 
-function Test-Configured([hashtable] $Package, [ref] $Reason) {
-    if (-not $Package.ContainsKey('ConfigAny')) { return $true }
-    foreach ($relativeConfig in @($Package.ConfigAny)) {
+function Test-Configured($Package, [ref] $Reason) {
+    if ($Package.PSObject.Properties.Name -notcontains 'configAny') { return $true }
+    foreach ($relativeConfig in @($Package.configAny)) {
         $configPath = Resolve-RepoPath $relativeConfig
         if (Test-Path -LiteralPath $configPath) { return $true }
     }
@@ -51,10 +51,9 @@ function New-Result([string] $Package, [string] $Action, [string] $Result, [stri
     }
 }
 
-function Invoke-PackageStart([hashtable] $Package) {
-    $name = [string]$Package.Name
-    $scriptName = [string]$Package.StartScript
-    $scriptPath = Resolve-RepoPath (Join-Path "Packages\$name" $scriptName)
+function Invoke-PackageStart($Package) {
+    $name = [string]$Package.name
+    $scriptPath = Resolve-RepoPath ([string]$Package.start)
 
     if (-not (Test-Path -LiteralPath $scriptPath)) {
         return New-Result $name 'Start' 'SKIP' "script not found: $scriptPath" 0
@@ -85,17 +84,21 @@ function Invoke-PackageStart([hashtable] $Package) {
     }
 }
 
-$manifest = Import-AggregateManifest
-$packages = @($manifest.Packages | ForEach-Object { [hashtable]$_ })
+$syncTools = Import-SyncTools
+$packages = @($syncTools.syncTools)
 
 Write-Host 'Workbench Start' -ForegroundColor Cyan
-Write-Host "  manifest: $ManifestPath"
+Write-Host "  sync tools: $SyncToolsPath"
 
 $results = @()
 foreach ($package in $packages) {
-    $name = [string]$package.Name
+    $name = [string]$package.name
     if (-not (Test-ManifestSelection $name)) {
         $results += New-Result $name 'Start' 'SKIP' 'filtered by Include/Exclude' 0
+        continue
+    }
+    if (-not [bool]$package.enabled) {
+        $results += New-Result $name 'Start' 'SKIP' 'disabled in sync-tools.json' 0
         continue
     }
     $results += Invoke-PackageStart $package

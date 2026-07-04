@@ -27,7 +27,7 @@ The configured state repository may be private or public. Choose visibility acco
 .\Start.ps1
 ```
 
-Root `Start.ps1` reads `Packages/aggregate.psd1` and runs only packages listed there. Missing local configs are reported as `SKIP`, not as fatal setup errors.
+Root `Start.ps1` reads `Packages/sync-tools.json` and runs only tools with `enabled: true`. Missing local configs are reported as `SKIP`, not as fatal setup errors.
 
 7. Rebuild the local source mirror only when needed:
 
@@ -47,7 +47,7 @@ Root `Finish.ps1` continues across packages, prints a `Package | Action | Result
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 
-ProjectSync is deliberately not registered in `Packages/aggregate.psd1`. Run it manually only when the project mirror needs refresh.
+ProjectSync is listed in `Packages/sync-tools.json` but defaults to `enabled: false`. Run it manually only when the project mirror needs refresh.
 
 ## Boundaries
 

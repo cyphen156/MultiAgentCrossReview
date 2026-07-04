@@ -4,7 +4,7 @@ ProjectSync is the package button for the workbench project mirror sync script.
 
 It wraps the root `sync.ps1`, which refreshes `Projects/<name>/baseline/` and agent edit copies from the configured source project repositories.
 
-ProjectSync is intentionally **not** listed in `Packages/aggregate.psd1`, so root `Start.ps1` / `Finish.ps1` never discover it by file presence alone. Project mirror refresh is a work-in-progress operation that is often run manually while reviewing code. It must not be pulled into conversation/session/state sync by accident.
+ProjectSync is listed in `Packages/sync-tools.json` with `enabled: false`, so root `Start.ps1` / `Finish.ps1` show it as disabled instead of discovering it by file presence. Project mirror refresh is a work-in-progress operation that is often run manually while reviewing code. It must not be pulled into conversation/session/state sync by accident.
 
 ## Usage
 

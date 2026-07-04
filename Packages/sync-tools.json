@@ -1,0 +1,31 @@
+{
+  "syncTools": [
+    {
+      "name": "WorkbenchStateSync",
+      "enabled": true,
+      "start": "Packages/WorkbenchStateSync/Start.ps1",
+      "finish": "Packages/WorkbenchStateSync/Finish.ps1",
+      "configAny": [
+        "Packages/WorkbenchStateSync/workbenchstatesync.config.psd1",
+        "WorkbenchStateSync.local.psd1"
+      ]
+    },
+    {
+      "name": "AgentSessionSync",
+      "enabled": true,
+      "start": "Packages/AgentSessionSync/Start.ps1",
+      "finish": "Packages/AgentSessionSync/Finish.ps1",
+      "configAny": [
+        "Packages/AgentSessionSync/agentsessionsync.config.psd1",
+        "AgentSessionSync.local.psd1"
+      ]
+    },
+    {
+      "name": "ProjectSync",
+      "enabled": false,
+      "start": "Packages/ProjectSync/Start.ps1",
+      "finish": "",
+      "note": "Project mirror sync is manual. Run Packages/ProjectSync/Start.ps1 directly when needed."
+    }
+  ]
+}
