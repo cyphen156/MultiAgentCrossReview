@@ -59,22 +59,16 @@ Pull state from the configured repository into the current workbench:
 .\Packages\WorkbenchStateSync\Start.ps1
 ```
 
-Named Windows launcher:
+Create local taskbar shortcuts:
 
-```text
-Packages\WorkbenchStateSync\WorkbenchStateSync Start.cmd
+```powershell
+.\Packages\WorkbenchStateSync\Create-Shortcuts.ps1
 ```
 
 Push state from the current workbench into the configured repository, then commit and push that repository:
 
 ```powershell
 .\Packages\WorkbenchStateSync\Finish.ps1
-```
-
-Named Windows launcher:
-
-```text
-Packages\WorkbenchStateSync\WorkbenchStateSync Finish.cmd
 ```
 
 The repository root `Start.ps1` / `Finish.ps1` run this package only because it is listed with `enabled: true` in `Packages/sync-tools.json`. Project mirror refresh is separate and belongs to `Packages/ProjectSync/Start.ps1`.

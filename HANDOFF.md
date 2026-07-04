@@ -27,10 +27,10 @@ The configured state repository may be private or public. Choose visibility acco
 .\Start.ps1
 ```
 
-Named Windows launcher for the same aggregate action:
+Create local taskbar shortcuts when needed:
 
-```text
-Workbench Start.cmd
+```powershell
+.\Create-Shortcuts.ps1
 ```
 
 Root `Start.ps1` reads `Packages/sync-tools.json` and runs only tools with `enabled: true`. Missing local configs are reported as `SKIP`, not as fatal setup errors.
@@ -49,13 +49,9 @@ Push configured state/session packages:
 .\Finish.ps1
 ```
 
-Named Windows launcher for the same aggregate action:
-
-```text
-Workbench Finish.cmd
-```
-
 Root `Finish.ps1` continues across packages, prints a `Package | Action | Result | Reason` summary table, and returns non-zero if any package fails.
+
+Generated `Shortcuts/` folders are local-only and ignored by git.
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 

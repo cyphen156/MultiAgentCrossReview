@@ -48,12 +48,13 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 .\Finish.ps1
 ```
 
-작업표시줄이나 더블클릭용 통합 Windows 런처는 패키지 밖 루트에 둡니다.
+작업표시줄 고정용 Windows `.lnk` 바로가기는 로컬에서 생성합니다.
 
-```text
-Workbench Start.cmd
-Workbench Finish.cmd
+```powershell
+.\Create-Shortcuts.ps1
 ```
+
+생성된 `Shortcuts/` 폴더는 gitignore 대상입니다.
 
 특정 패키지만 실행할 수도 있습니다.
 
@@ -132,7 +133,7 @@ UserSettings/               개인 설정 공간 (README만 공개, 하위 파�
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 Start.ps1 / Finish.ps1      상태/세션 패키지 통합 Start/Finish 버튼
-Workbench Start.cmd / Workbench Finish.cmd  통합 Windows 런처
+Create-Shortcuts.ps1        통합 Start/Finish 작업표시줄용 .lnk 생성기
 Packages/sync-tools.json    루트 Start/Finish에 참여할 동기화 도구 목록
 Packages/WorkbenchStateSync/  워크벤치 상태 sync 도구 (공개 패키지)
 Packages/AgentSessionSync/    원문 세션 sync 도구 호출 어댑터 (공개 패키지)
@@ -231,7 +232,7 @@ git pull/push까지 한 번에 처리하려면 래퍼를 씁니다(프로젝트 
 .\Packages\WorkbenchStateSync\Finish.ps1   # 워크트리 상태 -> 상태 저장소 commit/push
 ```
 
-작업표시줄/더블클릭용 `Start.cmd`·`Finish.cmd`도 있습니다. 상태 저장소에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
+작업표시줄 고정용 `.lnk`는 `Packages/WorkbenchStateSync/Create-Shortcuts.ps1`로 생성합니다. 생성된 `Shortcuts/` 폴더는 gitignore 대상입니다. 상태 저장소에 원격이 없으면 `-SkipGitPull`/`-SkipGitPush`로 로컬만 동기화합니다.
 
 WorkbenchStateSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 않습니다.  
 충돌 시 대상 파일을 `.bak`으로 백업하고 경고한 뒤 건너뛰며, `-Force`가 있을 때만 덮어씁니다.

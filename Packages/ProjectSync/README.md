@@ -14,10 +14,10 @@ Refresh all configured projects:
 .\Packages\ProjectSync\Start.ps1
 ```
 
-Named Windows launcher:
+Create a local taskbar shortcut:
 
-```text
-Packages\ProjectSync\ProjectSync Start.cmd
+```powershell
+.\Packages\ProjectSync\Create-Shortcuts.ps1
 ```
 
 Refresh one project:
