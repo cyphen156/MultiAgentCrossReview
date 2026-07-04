@@ -19,28 +19,31 @@ The configured state repository may be private or public. Choose visibility acco
 1. Clone this public workbench repository.
 2. Clone or create the user-managed state repository.
 3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `VaultRoot` to the state repository path.
-4. Create ignored `Projects/projects.json` from `Projects/projects.example.json` and set machine-local source project paths.
-5. Pull state into the workbench:
+4. Optional: create ignored `Packages/AgentSessionSync/agentsessionsync.config.psd1` from the example and set `ToolRoot` to the local AgentSessionSync clone.
+5. Create ignored `Projects/projects.json` from `Projects/projects.example.json` and set machine-local source project paths.
+6. Pull configured state/session packages into the workbench:
 
 ```powershell
-.\Packages\WorkbenchStateSync\Start.ps1
+.\Start.ps1
 ```
 
-6. Rebuild the local source mirror if needed:
+7. Rebuild the local source mirror only when needed:
 
 ```powershell
-.\sync.ps1
+.\Packages\ProjectSync\Start.ps1
 ```
 
 ## Finish Work
 
-Push user-managed state back to the configured state repository:
+Push configured state/session packages:
 
 ```powershell
-.\Packages\WorkbenchStateSync\Finish.ps1
+.\Finish.ps1
 ```
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
+
+ProjectSync is deliberately not included in root `Start.ps1` / `Finish.ps1`. Run it manually only when the project mirror needs refresh.
 
 ## Boundaries
 
@@ -51,4 +54,4 @@ Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or 
 
 ## Current Known Follow-Up
 
-Existing public history still tracks old real review instance files. New review instances are ignored, but existing tracked files must be untracked in a separate cleanup step after preserving them in the configured state repository.
+Old public history is intentionally left public. Current `HEAD` tracks only framework review files under `Reviews/`; future real review instances are ignored and should move through the configured state repository.

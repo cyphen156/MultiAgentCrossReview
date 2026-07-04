@@ -63,6 +63,8 @@ Push state from the current workbench into the configured repository, then commi
 .\Packages\WorkbenchStateSync\Finish.ps1
 ```
 
+The repository root `Start.ps1` / `Finish.ps1` also run this package when it is configured. Project mirror refresh is separate and belongs to `Packages/ProjectSync/Start.ps1`.
+
 Lower-level copy operations are available directly:
 
 ```powershell

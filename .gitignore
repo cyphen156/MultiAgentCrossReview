@@ -26,7 +26,9 @@
 # Optional machine-specific configuration
 /local.settings.psd1
 /WorkbenchStateSync.local.psd1
+/AgentSessionSync.local.psd1
 /Packages/WorkbenchStateSync/workbenchstatesync.config.psd1
+/Packages/AgentSessionSync/agentsessionsync.config.psd1
 
 # Local user settings. Keep only the public guide tracked.
 /UserSettings/**

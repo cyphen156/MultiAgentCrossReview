@@ -27,6 +27,41 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
 - 실제 상태 저장소 이름, URL, 절대경로는 공개 README에 고정하지 않습니다.
 
+## 원클릭 Start / Finish
+
+루트의 `Start.ps1` / `Finish.ps1`는 패키지 폴더 아래의 동기화 버튼을 한 번에 실행하는 통합 버튼입니다.
+
+기본 포함:
+
+- `Packages/WorkbenchStateSync/Start.ps1`, `Finish.ps1`
+- `Packages/AgentSessionSync/Start.ps1`, `Finish.ps1`
+
+기본 제외:
+
+- `Packages/ProjectSync/Start.ps1`
+
+`ProjectSync`는 작업 중 프로젝트 미러를 새로 당겨와야 할 때 수동으로 누르는 버튼입니다. 대화 세션이나 워크벤치 상태 동기화에 자동으로 딸려 들어가면 안 되므로 루트 `Start.ps1` / `Finish.ps1`의 기본 실행 대상에서 제외합니다.
+
+```powershell
+.\Start.ps1
+.\Finish.ps1
+```
+
+특정 패키지만 실행할 수도 있습니다.
+
+```powershell
+.\Start.ps1 -Include WorkbenchStateSync
+.\Finish.ps1 -Include AgentSessionSync
+```
+
+프로젝트 미러 동기화는 별도로 실행합니다.
+
+```powershell
+.\Packages\ProjectSync\Start.ps1
+.\Packages\ProjectSync\Start.ps1 -Project ExampleProject
+.\Packages\ProjectSync\Start.ps1 -ResetEdit All
+```
+
 ## 빠른 시작
 
 ```powershell
@@ -86,7 +121,10 @@ Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
 UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
+Start.ps1 / Finish.ps1      상태/세션 패키지 통합 Start/Finish 버튼
 Packages/WorkbenchStateSync/  워크벤치 상태 sync 도구 (공개 패키지)
+Packages/AgentSessionSync/    원문 세션 sync 도구 호출 어댑터 (공개 패키지)
+Packages/ProjectSync/         프로젝트 미러 sync 버튼 (통합 Start/Finish 기본 제외)
 Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
@@ -107,7 +145,7 @@ Reviews/                    검토 프레임워크 (공개)
     Codex/REVIEW.md + artifacts/
     DECISION.md             사용자 최종 판정
 
-sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
+sync.ps1 / sync.cmd         projects.json 구동 미러 동기화 (ProjectSync가 감쌈)
 ```
 
 `Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외합니다.  
@@ -116,7 +154,7 @@ sync.ps1 / sync.cmd         projects.json 구동 미러 동기화
 
 실제 검토 인스턴스 `Reviews/<review-id>/`도 로컬 전용(`.gitignore`)이며, 공개 저장소에는 `Reviews/README.md`·`_TEMPLATE/`·`run-review.ps1`과 `Examples/`의 정제된 실예시만 둡니다.  
 `Packages/WorkbenchStateSync/`는 공개 패키지이지만 실제 상태 저장소 경로는 공개하지 않습니다.  
-로컬 설정 파일(`Packages/WorkbenchStateSync/workbenchstatesync.config.psd1`, `WorkbenchStateSync.local.psd1`)은 gitignore 대상입니다.
+로컬 설정 파일(`Packages/WorkbenchStateSync/workbenchstatesync.config.psd1`, `WorkbenchStateSync.local.psd1`, `Packages/AgentSessionSync/agentsessionsync.config.psd1`, `AgentSessionSync.local.psd1`)은 gitignore 대상입니다.
 
 ## 규칙 계층
 
@@ -189,6 +227,35 @@ WorkbenchStateSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 �
 동기화 도구 자체는 별도 MIT 공개 repo [MultiAgentWorkbenchStateSync](https://github.com/cyphen156/MultiAgentWorkbenchStateSync)로도 제공합니다.  
 실제 개인 상태 저장소는 사용자가 직접 **상태 저장소**로 만들어 경로를 지정합니다.
 
+## AgentSessionSync 패키지 어댑터
+
+`Packages/AgentSessionSync/`는 원문 대화 세션 JSONL을 옮기는 별도 공개 도구 `AgentSessionSync`를 이 워크벤치의 버튼 체계에 연결하는 어댑터입니다.
+
+```powershell
+Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Packages\AgentSessionSync\agentsessionsync.config.psd1
+```
+
+`agentsessionsync.config.psd1`의 `ToolRoot`를 로컬 `AgentSessionSync` clone 경로로 지정합니다.
+
+```powershell
+.\Packages\AgentSessionSync\Start.ps1
+.\Packages\AgentSessionSync\Finish.ps1
+```
+
+설정이 없으면 루트 `Start.ps1` / `Finish.ps1`에서 이 패키지는 skip됩니다.
+
+## ProjectSync 패키지
+
+`Packages/ProjectSync/`는 기존 `sync.ps1`를 버튼화한 패키지입니다.
+
+```powershell
+.\Packages\ProjectSync\Start.ps1
+.\Packages\ProjectSync\Start.ps1 -Project ExampleProject
+.\Packages\ProjectSync\Start.ps1 -ResetEdit All
+```
+
+이 패키지는 루트 `Start.ps1` / `Finish.ps1` 기본 실행 대상이 아닙니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 작업이므로, 대화 세션/워크벤치 상태 동기화와 묶지 않습니다.
+
 ## 코드 차이와 증거
 
 - 코드 수정은 `Projects/<name>/edit/Claud`·`edit/Codex`(에이전트별)에서 합니다. `edit/<agent>` vs `baseline` diff가 그 에이전트의 제안이며, 빌드/테스트 산출물도 거기에 떨어집니다(전부 로컬).
@@ -205,7 +272,7 @@ WorkbenchStateSync는 다른 내용의 대상 파일을 조용히 덮어쓰지 �
 
 ## 참고
 
-- 워크벤치 PowerShell 스크립트(`sync.ps1`, `Reviews/run-review.ps1`, `Packages/WorkbenchStateSync/*.ps1`)는 Windows PowerShell 5.1의 한글 파싱을 위해 **UTF-8 BOM**으로 저장합니다 — 벗기지 마세요. (no-BOM은 대상 엔진 소스/DevLog의 규칙이지 워크벤치 툴링 규칙이 아닙니다.)
+- 워크벤치 PowerShell 스크립트(`Start.ps1`, `Finish.ps1`, `sync.ps1`, `Reviews/run-review.ps1`, `Packages/*/*.ps1`)는 Windows PowerShell 5.1의 한글 파싱을 위해 **UTF-8 BOM**으로 저장합니다 — 벗기지 마세요. (no-BOM은 대상 엔진 소스/DevLog의 규칙이지 워크벤치 툴링 규칙이 아닙니다.)
 - 2026-06-28 이전 검토 주제는 옛 번호파일 레이아웃(레거시)으로 그대로 보존합니다.
 
 ## 라이선스
