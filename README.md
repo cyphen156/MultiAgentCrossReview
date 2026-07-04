@@ -48,6 +48,13 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 .\Finish.ps1
 ```
 
+작업표시줄이나 더블클릭용 통합 Windows 런처는 패키지 밖 루트에 둡니다.
+
+```text
+Workbench Start.cmd
+Workbench Finish.cmd
+```
+
 특정 패키지만 실행할 수도 있습니다.
 
 ```powershell
@@ -125,6 +132,7 @@ UserSettings/               개인 설정 공간 (README만 공개, 하위 파�
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 Start.ps1 / Finish.ps1      상태/세션 패키지 통합 Start/Finish 버튼
+Workbench Start.cmd / Workbench Finish.cmd  통합 Windows 런처
 Packages/sync-tools.json    루트 Start/Finish에 참여할 동기화 도구 목록
 Packages/WorkbenchStateSync/  워크벤치 상태 sync 도구 (공개 패키지)
 Packages/AgentSessionSync/    원문 세션 sync 도구 호출 어댑터 (공개 패키지)

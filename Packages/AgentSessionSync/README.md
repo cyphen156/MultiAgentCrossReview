@@ -34,10 +34,22 @@ Pull raw sessions through AgentSessionSync:
 .\Packages\AgentSessionSync\Start.ps1
 ```
 
+Named Windows launcher:
+
+```text
+Packages\AgentSessionSync\AgentSessionSync Start.cmd
+```
+
 Push raw sessions through AgentSessionSync:
 
 ```powershell
 .\Packages\AgentSessionSync\Finish.ps1
+```
+
+Named Windows launcher:
+
+```text
+Packages\AgentSessionSync\AgentSessionSync Finish.cmd
 ```
 
 The root `Start.ps1` / `Finish.ps1` also run this package when it is configured.

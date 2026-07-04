@@ -14,6 +14,12 @@ Refresh all configured projects:
 .\Packages\ProjectSync\Start.ps1
 ```
 
+Named Windows launcher:
+
+```text
+Packages\ProjectSync\ProjectSync Start.cmd
+```
+
 Refresh one project:
 
 ```powershell

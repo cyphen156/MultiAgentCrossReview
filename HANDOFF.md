@@ -27,6 +27,12 @@ The configured state repository may be private or public. Choose visibility acco
 .\Start.ps1
 ```
 
+Named Windows launcher for the same aggregate action:
+
+```text
+Workbench Start.cmd
+```
+
 Root `Start.ps1` reads `Packages/sync-tools.json` and runs only tools with `enabled: true`. Missing local configs are reported as `SKIP`, not as fatal setup errors.
 
 7. Rebuild the local source mirror only when needed:
@@ -41,6 +47,12 @@ Push configured state/session packages:
 
 ```powershell
 .\Finish.ps1
+```
+
+Named Windows launcher for the same aggregate action:
+
+```text
+Workbench Finish.cmd
 ```
 
 Root `Finish.ps1` continues across packages, prints a `Package | Action | Result | Reason` summary table, and returns non-zero if any package fails.
