@@ -24,7 +24,7 @@ $scriptArgs = @()
 if ($Project) { $scriptArgs += @('-Project', $Project) }
 if ($ResetEdit) { $scriptArgs += @('-ResetEdit', $ResetEdit) }
 
-Write-Host 'ProjectSync Start' -ForegroundColor Cyan
+Write-Host 'ProjectSync Sync' -ForegroundColor Cyan
 Write-Host "  script: $SyncScript"
 
 if ($DryRun) {
@@ -35,4 +35,4 @@ if ($DryRun) {
 & $SyncScript @scriptArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host 'ProjectSync Start complete.' -ForegroundColor Green
+Write-Host 'ProjectSync Sync complete.' -ForegroundColor Green
