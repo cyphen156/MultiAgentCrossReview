@@ -21,6 +21,7 @@
 /Temp/
 /Shortcuts/
 /Packages/*/Shortcuts/
+/ProjectSync/Shortcuts/
 *.user
 *.log
 *.stackdump

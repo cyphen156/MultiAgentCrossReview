@@ -29,19 +29,17 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 ## 원클릭 Start / Finish
 
-루트의 `Start.ps1` / `Finish.ps1`는 명시 등록된 동기화 패키지를 한 번에 실행하는 통합 버튼입니다.
-실행 대상은 파일 존재 여부가 아니라 `Packages/sync-tools.json`의 사용자 편집용 목록으로 정합니다. 새 동기화 도구는 이 JSON에 추가하기 전까지 루트 버튼에 딸려 들어가지 않습니다.
+루트의 `Start.ps1` / `Finish.ps1`는 `Packages/` 아래의 **외부·선택 sync 어댑터**를 한 번에 실행하는 통합 버튼입니다.
+멤버십은 별도 목록 파일이 아니라 **폴더 위치**로 정합니다 — `Packages/<name>/`에 `Start.ps1`이 있으면 실행 대상입니다. 새 sync 어댑터는 `Packages/`에 넣는 순간 포함되고, 빼면 제외됩니다.
 
-현재 등록:
+현재 `Packages/` (원클릭 대상):
 
-- `Packages/WorkbenchStateSync/Start.ps1`, `Finish.ps1`
-- `Packages/AgentSessionSync/Start.ps1`, `Finish.ps1`
+- `Packages/WorkbenchStateSync/` — 외부 `MultiAgentWorkbenchStateSync` 호출 어댑터
+- `Packages/AgentSessionSync/` — 외부 `AgentSessionSync` 호출 어댑터
 
-현재 미등록:
+두 어댑터 모두 외부 도구(ToolRoot)를 clone·설정하기 전에는 **skip**합니다(에러 아님).
 
-- `Packages/ProjectSync/Start.ps1`
-
-`ProjectSync`는 작업 중 프로젝트 미러를 새로 당겨와야 할 때 수동으로 누르는 버튼입니다. `Packages/sync-tools.json`에 항목은 보이지만 기본값은 `enabled: false`라서 대화 세션이나 워크벤치 상태 동기화에 자동으로 딸려 들어가지 않습니다.
+`ProjectSync`는 `Packages/` **밖**의 내장·필수 단방향 미러(루트 `sync.ps1`)라서 원클릭에 딸려 들어가지 않습니다. 프로젝트 미러가 필요할 때만 수동으로 실행합니다.
 
 ```powershell
 .\Start.ps1
@@ -68,9 +66,9 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 프로젝트 미러 동기화는 별도로 실행합니다.
 
 ```powershell
-.\Packages\ProjectSync\Start.ps1
-.\Packages\ProjectSync\Start.ps1 -Project ExampleProject
-.\Packages\ProjectSync\Start.ps1 -ResetEdit All
+.\ProjectSync\Start.ps1
+.\ProjectSync\Start.ps1 -Project ExampleProject
+.\ProjectSync\Start.ps1 -ResetEdit All
 ```
 
 ## 빠른 시작
@@ -132,12 +130,11 @@ Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
 UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
 Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
-Start.ps1 / Finish.ps1      상태/세션 패키지 통합 Start/Finish 버튼
+Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (폴더=멤버십)
 Create-Shortcuts.ps1        통합 Start/Finish 작업표시줄용 .lnk 생성기
-Packages/sync-tools.json    루트 Start/Finish에 참여할 동기화 도구 목록
-Packages/WorkbenchStateSync/  워크벤치 상태 sync 도구 (공개 패키지)
-Packages/AgentSessionSync/    원문 세션 sync 도구 호출 어댑터 (공개 패키지)
-Packages/ProjectSync/         프로젝트 미러 sync 버튼 (sync-tools 기본 비활성, 수동 실행)
+Packages/WorkbenchStateSync/  외부 상태 sync 도구 호출 어댑터 (외부 레포 canonical)
+Packages/AgentSessionSync/    외부 세션 sync 도구 호출 어댑터 (외부 레포 canonical)
+ProjectSync/                내장·필수 프로젝트 미러 버튼 (루트 sync.ps1 감쌈, 원클릭 밖)
 Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
@@ -261,15 +258,15 @@ Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Pac
 
 ## ProjectSync 패키지
 
-`Packages/ProjectSync/`는 기존 `sync.ps1`를 버튼화한 패키지입니다.
+`ProjectSync/`(루트, `Packages/` 밖)는 기존 `sync.ps1`를 버튼화한 **내장·필수 단방향 미러**입니다.
 
 ```powershell
-.\Packages\ProjectSync\Start.ps1
-.\Packages\ProjectSync\Start.ps1 -Project ExampleProject
-.\Packages\ProjectSync\Start.ps1 -ResetEdit All
+.\ProjectSync\Start.ps1
+.\ProjectSync\Start.ps1 -Project ExampleProject
+.\ProjectSync\Start.ps1 -ResetEdit All
 ```
 
-이 패키지는 `Packages/sync-tools.json`에 보이지만 기본 `enabled: false`입니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 작업이므로, 대화 세션/워크벤치 상태 동기화와 묶지 않습니다.
+이 도구는 `Packages/` 밖에 있어 루트 원클릭 Start/Finish에 딸려 들어가지 않습니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 단방향 작업이므로, 양방향 sync 어댑터(대화 세션/워크벤치 상태)와 묶지 않습니다.
 
 ## 코드 차이와 증거
 

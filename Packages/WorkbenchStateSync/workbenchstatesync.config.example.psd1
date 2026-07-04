@@ -1,10 +1,12 @@
 @{
-    # Repository/worktree root that stores user-managed MultiAgentCrossReview state.
-    # It may be private or public; choose visibility according to the data you sync.
-    VaultRoot = 'C:\MultiAgentWorkbenchState'
+    # Local clone/path of https://github.com/cyphen156/MultiAgentWorkbenchStateSync.
+    # This package is only a thin adapter: it delegates to Start.ps1 / Finish.ps1
+    # under ToolRoot and injects -WorktreeRoot (this workbench).
+    # The actual state-repo target (VaultRoot) is configured in the external tool's
+    # own config at ToolRoot, not here.
+    ToolRoot = 'D:\Tools\MultiAgentWorkbenchStateSync'
 
-    # Optional override for the MultiAgentCrossReview worktree.
-    # Leave empty to use the repository root that contains this package.
-    WorktreeRoot = ''
+    # Optional explicit script paths (override ToolRoot\Start.ps1 / ToolRoot\Finish.ps1).
+    StartScript = ''
+    FinishScript = ''
 }
-

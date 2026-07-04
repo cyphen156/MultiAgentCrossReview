@@ -14,35 +14,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SyncToolsPath = Join-Path $RepoRoot 'Packages\sync-tools.json'
-
-function Resolve-RepoPath([string] $Path) {
-    if ([IO.Path]::IsPathRooted($Path)) { return [IO.Path]::GetFullPath($Path) }
-    return [IO.Path]::GetFullPath((Join-Path $RepoRoot $Path))
-}
-
-function Import-SyncTools {
-    if (-not (Test-Path -LiteralPath $SyncToolsPath)) {
-        throw "Sync tools list not found: $SyncToolsPath"
-    }
-    return Get-Content -Raw -LiteralPath $SyncToolsPath | ConvertFrom-Json
-}
-
-function Test-ManifestSelection([string] $Name) {
-    if ($Include.Count -gt 0 -and $Include -notcontains $Name) { return $false }
-    if ($Exclude -contains $Name) { return $false }
-    return $true
-}
-
-function Test-Configured($Package, [ref] $Reason) {
-    if ($Package.PSObject.Properties.Name -notcontains 'configAny') { return $true }
-    foreach ($relativeConfig in @($Package.configAny)) {
-        $configPath = Resolve-RepoPath $relativeConfig
-        if (Test-Path -LiteralPath $configPath) { return $true }
-    }
-    $Reason.Value = 'no local config'
-    return $false
-}
+$PackagesRoot = Join-Path $RepoRoot 'Packages'
 
 function New-Result([string] $Package, [string] $Action, [string] $Result, [string] $Reason, [int] $ExitCode) {
     [pscustomobject]@{
@@ -54,20 +26,29 @@ function New-Result([string] $Package, [string] $Action, [string] $Result, [stri
     }
 }
 
-function Invoke-PackageFinish($Package) {
-    $name = [string]$Package.name
-    if (-not $Package.finish) {
-        return New-Result $name 'Finish' 'SKIP' 'no Finish script' 0
-    }
-    $scriptPath = Resolve-RepoPath ([string]$Package.finish)
+# Membership = folder placement. Every Packages/<name>/ that has Finish.ps1 is an
+# external optional sync adapter and runs here. ProjectSync is a built-in one-way
+# mirror that lives OUTSIDE Packages/ and is intentionally not part of this button.
+$packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)
 
+Write-Host 'Workbench Finish' -ForegroundColor Cyan
+Write-Host "  packages: $PackagesRoot"
+
+$results = @()
+foreach ($pkg in $packages) {
+    $name = $pkg.Name
+    if ($Include.Count -gt 0 -and $Include -notcontains $name) {
+        $results += New-Result $name 'Finish' 'SKIP' 'filtered by -Include' 0
+        continue
+    }
+    if ($Exclude -contains $name) {
+        $results += New-Result $name 'Finish' 'SKIP' 'filtered by -Exclude' 0
+        continue
+    }
+    $scriptPath = Join-Path $pkg.FullName 'Finish.ps1'
     if (-not (Test-Path -LiteralPath $scriptPath)) {
-        return New-Result $name 'Finish' 'SKIP' "script not found: $scriptPath" 0
-    }
-
-    $reason = ''
-    if (-not (Test-Configured $Package ([ref]$reason))) {
-        return New-Result $name 'Finish' 'SKIP' $reason 0
+        $results += New-Result $name 'Finish' 'SKIP' 'no Finish.ps1' 0
+        continue
     }
 
     Write-Host ""
@@ -84,33 +65,13 @@ function Invoke-PackageFinish($Package) {
     try {
         $global:LASTEXITCODE = 0
         & $scriptPath @scriptArgs
-        $code = if ($LASTEXITCODE -ne $null) { [int]$LASTEXITCODE } else { 0 }
-        if ($code -ne 0) { return New-Result $name 'Finish' 'FAIL' "exit code $code" $code }
-        return New-Result $name 'Finish' 'OK' '' 0
+        $code = if ($null -ne $LASTEXITCODE) { [int]$LASTEXITCODE } else { 0 }
+        if ($code -ne 0) { $results += New-Result $name 'Finish' 'FAIL' "exit code $code" $code }
+        else { $results += New-Result $name 'Finish' 'OK' '' 0 }
     }
     catch {
-        return New-Result $name 'Finish' 'FAIL' $_.Exception.Message 1
+        $results += New-Result $name 'Finish' 'FAIL' $_.Exception.Message 1
     }
-}
-
-$syncTools = Import-SyncTools
-$packages = @($syncTools.syncTools)
-
-Write-Host 'Workbench Finish' -ForegroundColor Cyan
-Write-Host "  sync tools: $SyncToolsPath"
-
-$results = @()
-foreach ($package in $packages) {
-    $name = [string]$package.name
-    if (-not (Test-ManifestSelection $name)) {
-        $results += New-Result $name 'Finish' 'SKIP' 'filtered by Include/Exclude' 0
-        continue
-    }
-    if (-not [bool]$package.enabled) {
-        $results += New-Result $name 'Finish' 'SKIP' 'disabled in sync-tools.json' 0
-        continue
-    }
-    $results += Invoke-PackageFinish $package
 }
 
 Write-Host ""

@@ -33,12 +33,12 @@ Create local taskbar shortcuts when needed:
 .\Create-Shortcuts.ps1
 ```
 
-Root `Start.ps1` reads `Packages/sync-tools.json` and runs only tools with `enabled: true`. Missing local configs are reported as `SKIP`, not as fatal setup errors.
+Root `Start.ps1` runs every external sync adapter under `Packages/` (folder = membership). Adapters with no configured external tool are reported as `SKIP`, not as fatal setup errors.
 
 7. Rebuild the local source mirror only when needed:
 
 ```powershell
-.\Packages\ProjectSync\Start.ps1
+.\ProjectSync\Start.ps1
 ```
 
 ## Finish Work
@@ -55,7 +55,7 @@ Generated `Shortcuts/` folders are local-only and ignored by git.
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 
-ProjectSync is listed in `Packages/sync-tools.json` but defaults to `enabled: false`. Run it manually only when the project mirror needs refresh.
+ProjectSync lives outside `Packages/` (built-in one-way mirror), so the root one-click never runs it. Run `.\ProjectSync\Start.ps1` manually only when the project mirror needs refresh.
 
 ## Boundaries
 

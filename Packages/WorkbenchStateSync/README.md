@@ -1,104 +1,36 @@
-# WorkbenchStateSync
+# WorkbenchStateSync (adapter)
 
-WorkbenchStateSync is the package-level sync helper for user-managed MultiAgentCrossReview state.
+이 패키지는 **외부 독립 도구** [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync)를 호출하는 **얇은 어댑터**입니다.
 
-The public MultiAgentCrossReview repository keeps process, templates, docs, and tools. Mutable user state is removed from the public repository and synchronized with a user-configured repository or worktree.
+MultiAgentCrossReview는 이 동기화 도구를 **소유하지 않습니다.** 실제 구현(엔진)은 외부 레포가 canonical이고, 워크벤치 안에는 `Start.ps1` / `Finish.ps1` 위임 래퍼만 둡니다. 어댑터는 외부 도구에 `-WorktreeRoot`(이 워크벤치)를 주입해 호출합니다.
 
-The target repository may be private or public. Choose its visibility according to the data you put there.
+동기화 대상 상태(설정·프로젝트 규칙·실제 검토 기록)와 상태 저장소(VaultRoot)는 **외부 도구 쪽에서** 정의·설정합니다.
 
-This package copy is canonical for the workbench implementation. The standalone public `MultiAgentWorkbenchStateSync` repository is published from this package, not developed as a separate competing source.
+## 설정
 
-## Sync Scope
-
-Included:
-
-```text
-UserSettings/**/*.md
-Projects/<name>/RULES.md
-Reviews/<review-id>/**
-```
-
-Excluded:
-
-```text
-UserSettings/README.md
-Reviews/README.md
-Reviews/_TEMPLATE/**
-Reviews/run-review.ps1
-Projects/<name>/baseline/**
-Projects/<name>/edit/**
-*.jsonl, *.db, *.sqlite, *.key, *.pem, *.env, *.user, *.log
-```
-
-Raw conversation/session JSONL remains a separate AgentSessionSync concern.
-
-## Configuration
-
-Copy the example config to the ignored local config path:
+외부 도구를 clone한 뒤, 그 경로를 `ToolRoot`로 지정합니다.
 
 ```powershell
 Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
 ```
 
-Then set `VaultRoot` to the local clone/path of the repository that should store the synchronized state.
-
 ```powershell
 @{
-    VaultRoot = 'D:\State\MultiAgentWorkbenchState'
-    WorktreeRoot = ''
+    ToolRoot = 'D:\Tools\MultiAgentWorkbenchStateSync'
+    StartScript = ''
+    FinishScript = ''
 }
 ```
 
-`WorkbenchStateSync.local.psd1` at the repository root is also supported and is ignored by git.
+- `ToolRoot`가 없으면 이 어댑터는 **skip**합니다(에러 아님). 도구를 clone하고 경로를 넣으면 활성화됩니다.
+- 상태 저장소 경로(VaultRoot)와 동기화 범위는 `ToolRoot`의 외부 도구 config에서 설정합니다.
+- `workbenchstatesync.config.psd1`과 루트 `WorkbenchStateSync.local.psd1`은 gitignore 대상입니다.
 
-## Usage
-
-Pull state from the configured repository into the current workbench:
-
-```powershell
-.\Packages\WorkbenchStateSync\Start.ps1
-```
-
-Create local taskbar shortcuts:
+## 사용
 
 ```powershell
-.\Packages\WorkbenchStateSync\Create-Shortcuts.ps1
+.\Packages\WorkbenchStateSync\Start.ps1    # 상태 저장소 -> 워크트리 (외부 도구 위임)
+.\Packages\WorkbenchStateSync\Finish.ps1   # 워크트리 -> 상태 저장소 (외부 도구 위임)
 ```
 
-Push state from the current workbench into the configured repository, then commit and push that repository:
-
-```powershell
-.\Packages\WorkbenchStateSync\Finish.ps1
-```
-
-The repository root `Start.ps1` / `Finish.ps1` run this package only because it is listed with `enabled: true` in `Packages/sync-tools.json`. Project mirror refresh is separate and belongs to `Packages/ProjectSync/Start.ps1`.
-
-Lower-level copy operations are available directly:
-
-```powershell
-.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Pull
-.\Packages\WorkbenchStateSync\workbenchstatesync.ps1 -Direction Push
-```
-
-Useful options:
-
-```powershell
-.\Packages\WorkbenchStateSync\Start.ps1 -DryRun
-.\Packages\WorkbenchStateSync\Finish.ps1 -DryRun
-.\Packages\WorkbenchStateSync\Finish.ps1 -CommitMessage 'workbench state: update desktop'
-.\Packages\WorkbenchStateSync\Start.ps1 -Force
-.\Packages\WorkbenchStateSync\Finish.ps1 -NoOverwrite
-.\Packages\WorkbenchStateSync\Finish.ps1 -SkipGitPush
-```
-
-## Conflict Behavior
-
-WorkbenchStateSync does not silently overwrite divergent destination files.
-
-When source and destination both have a file at the same relative path with different content:
-
-1. The destination file is copied to a timestamped `.bak-*` backup.
-2. The copy is skipped unless `-Force` is supplied.
-3. With `-Force`, the source file overwrites the destination after backup.
-
-Token-like content is scanned on push. Values are not printed.
+루트 `Start.ps1` / `Finish.ps1`는 `Packages/` 아래 외부 sync 어댑터를 한 번에 실행하는데, 이 패키지도 거기 포함됩니다(폴더에 있는 것 자체가 등록). 프로젝트 미러 갱신은 별개이며 루트 `ProjectSync/Start.ps1`입니다.
