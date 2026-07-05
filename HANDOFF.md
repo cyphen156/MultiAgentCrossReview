@@ -8,11 +8,13 @@ This public repository is the MultiAgentCrossReview framework. Keep public proce
 
 | Repository / area | Role |
 |---|---|
-| `MultiAgentCrossReview` | Public framework: common rules, project templates, review process docs, `_TEMPLATE`, scripts, sync packages |
-| configured state repository | User-managed workbench state: `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, real `Reviews/<review-id>/**` |
-| `AgentSessionSync` | Separate raw session JSONL transport |
+| `MultiAgentCrossReview` | Public framework/workbench: common rules, project templates, review process docs, `_TEMPLATE`, scripts, sync-tool connectors |
+| `MultiAgentWorkbenchStateSync` | Public example: workbench-state sync tool template |
+| `MultiAgentWorkbenchStateVault` | Private real instance: the state tool **+ real data** (`UserSettings/**/*.md`, `Projects/<name>/RULES.md`, real `Reviews/<review-id>/**`) |
+| `AgentSessionSync` | Public example: session sync + agent launcher tool template |
+| `AgentSessionVault` | Private real instance: the session tool **+ real Codex/Claude JSONL** |
 
-The configured state repository may be private or public. Choose visibility according to the data stored there; private is recommended for real work.
+The `...Sync` repos are public examples/templates. The `...Vault` repos are the private, self-contained instances (tool + real data) you actually clone and use. Keep vaults private for real work.
 
 ## Fresh Machine Bootstrap
 

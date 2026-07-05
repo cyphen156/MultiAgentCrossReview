@@ -10,11 +10,15 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 ## 저장소 역할
 
-| 저장소 | 역할 | 포함하는 것 |
+| 저장소 | 성격 | 역할 |
 |---|---|---|
-| `MultiAgentCrossReview` | 공개 MIT 워크벤치 | 범용 규칙, 프로젝트 템플릿, 검토 오케스트레이터(`run-review.ps1`), 검토 템플릿(`_TEMPLATE`), 외부 sync 도구 어댑터, 정제된 실예시(`Examples/`) |
-| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 MIT 도구 | 사용자 관리 워크벤치 상태(`UserSettings/`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/`)를 사용자 지정 상태 저장소와 동기화하는 독립 도구 |
-| [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 MIT 세션 동기화 도구 | Codex·Claude 원본 세션 JSONL을 private session vault로 운반하는 Start/Finish 스크립트와 예시 |
+| `MultiAgentCrossReview` | 공개 워크벤치 | 검토 프로세스·범용 규칙·프로젝트 템플릿·오케스트레이터(`run-review.ps1`)·`_TEMPLATE`·외부 sync 도구 커넥터·정제된 실예시(`Examples/`) |
+| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 예시(도구) | 워크벤치 상태(`UserSettings/**/*.md`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/`) 동기화 도구의 공개 템플릿 |
+| `MultiAgentWorkbenchStateVault` | 비공개 실사용 | 위 도구 **+ 실제 상태 데이터**를 담아 사용자가 clone해 쓰는 자기완결 인스턴스 |
+| [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 예시(도구) | Codex·Claude 세션 JSONL 동기화 + 에이전트 실행 도구의 공개 템플릿 |
+| `AgentSessionVault` | 비공개 실사용 | 위 도구 **+ 실제 세션 JSONL**을 담은 자기완결 인스턴스 |
+
+**Sync ↔ Vault 관계:** 공개 `…Sync`는 예시 템플릿이고, 비공개 `…Vault`는 그 도구를 통째로 품고 실데이터를 담아 **사용자가 실제로 clone해서 쓰는 본체**입니다. Vault는 위임 커넥터가 아니라 도구+데이터 자기완결입니다.
 
 공개 저장소는 프로세스·템플릿·도구·정제된 실예시만 두고, 실제 검토 인스턴스(`Reviews/<review-id>/`)는 사용자 관리 상태로 취급합니다.  
 원문 대화(JSONL)는 시스템 지침·도구 출력·절대경로까지 포함한 실행 로그라서 이 저장소에 두지 않고 `AgentSessionSync`가 따로 운반합니다.
@@ -25,7 +29,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 - 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 외부 `MultiAgentWorkbenchStateSync` 도구를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다.
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
-- 실제 상태 저장소 이름, URL, 절대경로는 공개 README에 고정하지 않습니다.
+- Vault의 절대경로·자격증명·세션 원문(JSONL)은 공개 README/저장소에 두지 않습니다(이름·역할만 문서화).
 
 ## 원클릭 Start / Finish
 
