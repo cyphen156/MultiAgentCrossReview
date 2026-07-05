@@ -40,7 +40,7 @@ Root `Start.ps1` runs every external sync adapter under `Packages/` (folder = me
 7. Rebuild the local source mirror only when needed:
 
 ```powershell
-.\ProjectSync\Start.ps1
+.\Packages\ProjectSync\Sync.ps1
 ```
 
 ## Finish Work
@@ -57,7 +57,7 @@ Generated `Launchers\Shortcuts\` files are local-only and ignored by git.
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 
-ProjectSync lives outside `Packages/` (built-in one-way mirror), so the root one-click never runs it. Run `.\ProjectSync\Start.ps1` manually only when the project mirror needs refresh.
+`Packages/ProjectSync/` exposes a `Sync` command (not `Start`/`Finish`), so the folder-scanning root one-click never runs it. Run `.\Packages\ProjectSync\Sync.ps1` manually only when the project mirror needs refresh.
 
 ## Boundaries
 

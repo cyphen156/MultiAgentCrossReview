@@ -12,8 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-# ProjectSync now lives at the repo root (outside Packages/), so the repo root is one level up.
-$RepoRoot = Split-Path -Parent $PackageRoot
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PackageRoot)
 $SyncScript = Join-Path $RepoRoot 'sync.ps1'
 
 if (-not (Test-Path -LiteralPath $SyncScript)) {

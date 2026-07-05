@@ -6,7 +6,7 @@ param([switch] $Force)
 
 $ErrorActionPreference = 'Stop'
 $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Split-Path -Parent $PackageRoot
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PackageRoot)
 $example = Join-Path $RepoRoot 'Projects\projects.example.json'
 $target = Join-Path $RepoRoot 'Projects\projects.json'
 

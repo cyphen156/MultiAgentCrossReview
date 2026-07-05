@@ -23,8 +23,8 @@ $items = @(
     @{ Name = 'AgentSession-Start';     Script = 'Packages\AgentSessionSync\Start.ps1';     Icon = '137'; Desc = 'AgentSession: pull sessions, launch agents' }
     @{ Name = 'AgentSession-Finish';    Script = 'Packages\AgentSessionSync\Finish.ps1';    Icon = '131'; Desc = 'AgentSession: close agents, push sessions' }
     @{ Name = 'AgentSession-Startup';   Script = 'Packages\AgentSessionSync\Startup.ps1';   Icon = '176'; Desc = 'AgentSession: connect/create external tool' }
-    @{ Name = 'Project-Sync';           Script = 'ProjectSync\Sync.ps1';                 Icon = '167'; Desc = 'ProjectSync: refresh project source mirror' }
-    @{ Name = 'Project-Startup';        Script = 'ProjectSync\Startup.ps1';              Icon = '176'; Desc = 'ProjectSync: create projects.json from example' }
+    @{ Name = 'Project-Sync';           Script = 'Packages\ProjectSync\Sync.ps1';        Icon = '167'; Desc = 'ProjectSync: refresh project source mirror' }
+    @{ Name = 'Project-Startup';        Script = 'Packages\ProjectSync\Startup.ps1';     Icon = '176'; Desc = 'ProjectSync: create projects.json from example' }
 )
 
 foreach ($item in $items) {

@@ -43,7 +43,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 두 어댑터 모두 외부 도구(ToolRoot)를 clone·설정하기 전에는 **skip**합니다(에러 아님).
 
-`ProjectSync`는 `Packages/` **밖**의 내장·필수 단방향 미러(루트 `sync.ps1`)라서 원클릭에 딸려 들어가지 않습니다. 프로젝트 미러가 필요할 때만 수동으로 실행합니다.
+`Packages/ProjectSync/`는 `Start/Finish`가 아니라 **`Sync` 단방향 미러 명령**을 노출하므로, 폴더 순회 원클릭(Start/Finish)에는 자연히 빠집니다. 프로젝트 미러가 필요할 때만 수동으로 실행합니다.
 
 ```powershell
 .\Start.ps1
@@ -70,9 +70,9 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 프로젝트 미러 동기화는 별도로 실행합니다.
 
 ```powershell
-.\ProjectSync\Start.ps1
-.\ProjectSync\Start.ps1 -Project ExampleProject
-.\ProjectSync\Start.ps1 -ResetEdit All
+.\Packages\ProjectSync\Sync.ps1
+.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject
+.\Packages\ProjectSync\Sync.ps1 -ResetEdit All
 ```
 
 ## 빠른 시작
@@ -139,7 +139,7 @@ Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (�
 Launchers/                  통합/수동 실행용 Windows 런처와 작업표시줄용 .lnk 생성기
 Packages/WorkbenchStateSync/  외부 상태 sync 도구 호출 어댑터 (외부 레포 canonical)
 Packages/AgentSessionSync/    외부 세션 sync 도구 호출 어댑터 (외부 레포 canonical)
-ProjectSync/                내장·필수 프로젝트 미러 버튼 (루트 sync.ps1 감쌈, 원클릭 밖)
+Packages/ProjectSync/       내장·필수 프로젝트 미러 (Sync 명령, sync.ps1 감쌈, Start/Finish 배치 제외)
 Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
@@ -248,15 +248,15 @@ Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Pac
 
 ## ProjectSync 패키지
 
-`ProjectSync/`(루트, `Packages/` 밖)는 기존 `sync.ps1`를 버튼화한 **내장·필수 단방향 미러**입니다.
+`Packages/ProjectSync/`는 기존 `sync.ps1`를 버튼화한 **내장·필수 단방향 미러**입니다.
 
 ```powershell
-.\ProjectSync\Start.ps1
-.\ProjectSync\Start.ps1 -Project ExampleProject
-.\ProjectSync\Start.ps1 -ResetEdit All
+.\Packages\ProjectSync\Sync.ps1
+.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject
+.\Packages\ProjectSync\Sync.ps1 -ResetEdit All
 ```
 
-이 도구는 `Packages/` 밖에 있어 루트 원클릭 Start/Finish에 딸려 들어가지 않습니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 단방향 작업이므로, 양방향 sync 어댑터(대화 세션/워크벤치 상태)와 묶지 않습니다.
+이 도구는 `Sync` 단방향 명령이라(Start/Finish가 아님) 루트 원클릭 배치에 딸려 들어가지 않습니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 단방향 작업이므로, 양방향 sync 도구(대화 세션/워크벤치 상태)와 묶지 않습니다.
 
 ## 코드 차이와 증거
 
