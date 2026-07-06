@@ -50,7 +50,9 @@ Write-Host "  source:   $source"
 Write-Host "  tool:     $FinishScript"
 Write-Host "  worktree: $RepoRoot"
 
-$toolArgs = @{ WorktreeRoot = $RepoRoot }
+# ToolRoot is the self-contained Vault, so VaultRoot = that Vault root. Injecting it
+# here means the Vault needs no separate workbenchstatesync.config.psd1.
+$toolArgs = @{ VaultRoot = $resolvedRoot; WorktreeRoot = $RepoRoot }
 if ($Force) { $toolArgs.Force = $true }
 if ($NoOverwrite) { $toolArgs.NoOverwrite = $true }
 if ($SkipGitPull) { $toolArgs.SkipGitPull = $true }
@@ -58,7 +60,7 @@ if ($SkipGitPush) { $toolArgs.SkipGitPush = $true }
 if ($CommitMessage) { $toolArgs.CommitMessage = $CommitMessage }
 
 if ($DryRun) {
-    Write-Host "dry-run: $FinishScript -WorktreeRoot $RepoRoot" -ForegroundColor DarkGray
+    Write-Host "dry-run: $FinishScript -VaultRoot $resolvedRoot -WorktreeRoot $RepoRoot" -ForegroundColor DarkGray
     exit 0
 }
 

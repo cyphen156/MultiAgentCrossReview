@@ -7,6 +7,10 @@
 #   2) legacy Packages/<Tool>/<tool>.config.psd1   backward-compatible fallback (ToolRoot)
 #   3) auto-discovery of standard sibling folders  (private Vault preferred over public Sync)
 #
+# Auto-discovery only resolves a ToolRoot in memory for the current call; it does NOT
+# write sync-tools.json. Persisting a registration is always an explicit action via
+# Register.ps1 / Startup.ps1.
+#
 # Relative toolRoot values are resolved against the MultiAgentCrossReview repo root.
 # This layer only points at the tool. The tool's own working-directory config
 # (e.g. Vault\AgentSessionSync.config.psd1 with ProjectRoot/ClaudeHome/CodexHome) is
