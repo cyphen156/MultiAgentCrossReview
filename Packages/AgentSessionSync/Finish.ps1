@@ -56,7 +56,10 @@ if ($DryRun) {
     exit 0
 }
 
-& $FinishScript @RemainingArguments
+# Guard the splat: an unbound [string[]] is $null, and `@null` passes a $null
+# positional arg that a param()-less Vault launcher rejects.
+if ($RemainingArguments -and $RemainingArguments.Count -gt 0) { & $FinishScript @RemainingArguments }
+else { & $FinishScript }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host 'AgentSessionSync Finish complete.' -ForegroundColor Green
