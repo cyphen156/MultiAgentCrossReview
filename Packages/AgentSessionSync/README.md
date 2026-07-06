@@ -1,10 +1,10 @@
 # AgentSessionSync Package Adapter
 
-This package is a local button adapter for the standalone AgentSessionSync tool.
+This package is a local button adapter for the session-sync tool.
 
 AgentSessionSync moves raw Codex/Claude session data. It is intentionally separate from WorkbenchStateSync, which moves review/workbench state such as `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, and `Reviews/<review-id>/**`.
 
-The standalone AgentSessionSync repository is canonical. This workbench package does not copy session-sync logic; it validates the local `ToolRoot`, delegates to that tool's `Start.ps1` / `Finish.ps1`, and forwards common root options where they are part of the adapter contract.
+This workbench package does not copy session-sync logic; it validates the local `ToolRoot`, delegates to that tool's `Launchers\Start.ps1` / `Launchers\Finish.ps1`, and forwards common root options where they are part of the adapter contract. Point `ToolRoot` at your self-contained AgentSessionVault — the real instance you actually run (tool + real session JSONL). The public AgentSessionSync repository is only the example template.
 
 ## Configuration
 
@@ -14,11 +14,11 @@ Copy the example config to the ignored local config path:
 Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Packages\AgentSessionSync\agentsessionsync.config.psd1
 ```
 
-Then set `ToolRoot` to the local clone/path of the standalone AgentSessionSync repository:
+Then set `ToolRoot` to your local AgentSessionVault (the real instance; the public AgentSessionSync is only the example template):
 
 ```powershell
 @{
-    ToolRoot = 'D:\Tools\AgentSessionSync'
+    ToolRoot = 'C:\Project\MultiAgent\AgentSessionVault'
     StartScript = ''
     FinishScript = ''
 }

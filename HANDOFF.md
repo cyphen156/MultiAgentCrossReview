@@ -64,7 +64,7 @@ Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or 
 - Public framework files stay in this repository: `Common/`, `Reviews/README.md`, `Reviews/_TEMPLATE/**`, `Reviews/run-review.ps1`, package code, examples.
 - User-managed state is synchronized by WorkbenchStateSync: `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, real `Reviews/<review-id>/**`.
 - Excluded from WorkbenchStateSync: `Projects/<name>/baseline/**`, `Projects/<name>/edit/**`, build outputs, logs, raw session JSONL, credentials, tokens, local machine config.
-- Raw Codex/Claude session transport remains an AgentSessionSync concern. The standalone AgentSessionSync repo is canonical; this workbench keeps only a thin package adapter.
+- Raw Codex/Claude session transport is a session-sync concern. The public AgentSessionSync repo is only the example template; the real instance you point `ToolRoot` at is the self-contained AgentSessionVault (tool + real session JSONL). This workbench keeps only a thin package adapter.
 
 ## Current Known Follow-Up
 

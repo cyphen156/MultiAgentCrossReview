@@ -27,7 +27,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 한 대의 머신에서만 작업하거나 로컬 상태·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
 여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 만든 **상태 저장소**를 대상으로 경로를 설정해 사용합니다.
 
-- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 외부 `MultiAgentWorkbenchStateSync` 도구를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다.
+- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 실사용 상태 도구(ToolRoot=`MultiAgentWorkbenchStateVault`)를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다.
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
 - Vault의 절대경로·자격증명·세션 원문(JSONL)은 공개 README/저장소에 두지 않습니다(이름·역할만 문서화).
 
@@ -88,8 +88,8 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 # 3) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 설정
 Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
-# workbenchstatesync.config.psd1의 ToolRoot를 외부 MultiAgentWorkbenchStateSync clone 경로로 수정
-# 상태 저장소 VaultRoot는 외부 MultiAgentWorkbenchStateSync 쪽 config에서 설정
+# workbenchstatesync.config.psd1의 ToolRoot를 실사용본 MultiAgentWorkbenchStateVault clone 경로로 수정
+# 상태 저장소 VaultRoot는 그 도구(Vault) 쪽 config에서 설정
 .\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize
 
 # 4) 새 검토 주제 생성 + 진행
@@ -137,8 +137,8 @@ Claud/ROLE.md               Claude 역할
 Codex/ROLE.md               Codex 역할
 Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (폴더=멤버십)
 Launchers/                  통합/수동 실행용 Windows 런처와 작업표시줄용 .lnk 생성기
-Packages/WorkbenchStateSync/  외부 상태 sync 도구 호출 어댑터 (외부 레포 canonical)
-Packages/AgentSessionSync/    외부 세션 sync 도구 호출 어댑터 (외부 레포 canonical)
+Packages/WorkbenchStateSync/  상태 sync 도구 호출 어댑터 (ToolRoot=실사용 MultiAgentWorkbenchStateVault)
+Packages/AgentSessionSync/    세션 sync 도구 호출 어댑터 (ToolRoot=실사용 AgentSessionVault)
 Packages/ProjectSync/       내장·필수 프로젝트 미러 (Sync 명령, sync.ps1 감쌈, Start/Finish 배치 제외)
 Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
 
@@ -204,12 +204,12 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 
 원칙:
 
-- 외부 `MultiAgentWorkbenchStateSync` repo = 상태 동기화 도구의 canonical 구현.
-- 이 워크벤치의 `Packages/WorkbenchStateSync/` = `ToolRoot` 아래 외부 도구 `Start.ps1` / `Finish.ps1`를 호출하는 얇은 어댑터.
+- 실사용 `ToolRoot` = 자기완결 `MultiAgentWorkbenchStateVault`(도구+실상태 데이터). 공개 `MultiAgentWorkbenchStateSync`는 같은 도구의 공개 예시 템플릿.
+- 이 워크벤치의 `Packages/WorkbenchStateSync/` = `ToolRoot` 아래 도구의 `Launchers\Start.ps1` / `Launchers\Finish.ps1`를 호출하는 얇은 어댑터.
 - 상태 저장소 = 워크벤치 개인 상태의 SSOT (룰·설정·실제 검토 기록).
 - 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized copy.
 - Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
-- 동기화 범위, 충돌 처리, 시크릿 스캔, VaultRoot 설정은 외부 `MultiAgentWorkbenchStateSync` 도구가 소유합니다.
+- 동기화 범위, 충돌 처리, 시크릿 스캔, VaultRoot 설정은 `ToolRoot`의 도구가 소유합니다.
 
 설정:
 
@@ -217,7 +217,7 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
 ```
 
-`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 외부 `MultiAgentWorkbenchStateSync` clone 경로(`ToolRoot`)를 지정합니다. 상태 저장소 `VaultRoot`는 외부 도구 쪽 config에서 지정합니다.
+`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 실사용본 `MultiAgentWorkbenchStateVault` clone 경로(`ToolRoot`)를 지정합니다. 상태 저장소 `VaultRoot`는 그 도구(Vault) 쪽 config에서 지정합니다.
 
 예:
 
@@ -230,14 +230,14 @@ Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .
 
 ## AgentSessionSync 패키지 어댑터
 
-`Packages/AgentSessionSync/`는 원문 대화 세션 JSONL을 옮기는 별도 공개 도구 `AgentSessionSync`를 이 워크벤치의 버튼 체계에 연결하는 얇은 어댑터입니다.
-SSOT는 외부 `AgentSessionSync` repo이고, 이 패키지는 로컬 `ToolRoot`의 `Start.ps1` / `Finish.ps1` 존재를 확인한 뒤 공통 옵션을 넘겨 호출합니다. 이 워크벤치 안에는 세션 동기화 로직을 복제하지 않습니다.
+`Packages/AgentSessionSync/`는 원문 대화 세션 JSONL을 옮기는 세션 동기화 도구를 이 워크벤치의 버튼 체계에 연결하는 얇은 어댑터입니다.
+실사용 `ToolRoot`는 자기완결 `AgentSessionVault`(도구+실세션 JSONL)를 가리키고, 공개 `AgentSessionSync`는 같은 도구의 공개 예시 템플릿입니다. 이 패키지는 `ToolRoot`의 `Launchers\Start.ps1` / `Launchers\Finish.ps1` 존재를 확인한 뒤 공통 옵션을 넘겨 호출하며, 세션 동기화 로직을 복제하지 않습니다.
 
 ```powershell
 Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Packages\AgentSessionSync\agentsessionsync.config.psd1
 ```
 
-`agentsessionsync.config.psd1`의 `ToolRoot`를 로컬 `AgentSessionSync` clone 경로로 지정합니다.
+`agentsessionsync.config.psd1`의 `ToolRoot`를 로컬 `AgentSessionVault` clone 경로로 지정합니다.
 
 ```powershell
 .\Packages\AgentSessionSync\Start.ps1
