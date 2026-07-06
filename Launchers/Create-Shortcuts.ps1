@@ -1,6 +1,7 @@
 #requires -Version 5.1
 # Generate taskbar-pinnable .lnk shortcuts for every workbench command.
-# Each shortcut opens a console (cmd /k) that runs the target PowerShell command.
+# Each shortcut opens a console (cmd /c) that runs the target PowerShell command,
+# then waits 30s (or any keypress) via `timeout /t 30` before the window closes.
 [CmdletBinding()]
 param([string] $OutputDirectory = '')
 
@@ -32,7 +33,7 @@ foreach ($item in $items) {
     $shortcutPath = Join-Path $OutputDirectory "$($item.Name).lnk"
     $sc = $shell.CreateShortcut($shortcutPath)
     $sc.TargetPath = "$env:SystemRoot\System32\cmd.exe"
-    $sc.Arguments = "/k powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+    $sc.Arguments = "/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" & timeout /t 30"
     $sc.WorkingDirectory = $RepoRoot
     $sc.IconLocation = "$env:SystemRoot\System32\shell32.dll,$($item.Icon)"
     $sc.Description = $item.Desc
