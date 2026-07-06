@@ -24,8 +24,9 @@ function New-Result([string] $Package, [string] $Action, [string] $Result, [stri
 }
 
 # Membership = folder placement. Every Packages/<name>/ that has Start.ps1 is an
-# external optional sync adapter and runs here. ProjectSync is a built-in one-way
-# mirror that lives OUTSIDE Packages/ and is intentionally not part of this button.
+# external optional sync adapter and runs here. Packages/ProjectSync/ is a built-in
+# one-way mirror that exposes Sync.ps1 (not Start.ps1), so this folder scan skips it
+# ('no Start.ps1') and it is intentionally not part of this button.
 $packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)
 
 Write-Host 'Workbench Start' -ForegroundColor Cyan

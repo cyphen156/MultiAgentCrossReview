@@ -20,8 +20,8 @@ The `...Sync` repos are public examples/templates. The `...Vault` repos are the 
 
 1. Clone this public workbench repository.
 2. Clone or create the user-managed state repository.
-3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `ToolRoot` to the local MultiAgentWorkbenchStateSync clone. Configure `VaultRoot` in that external tool's own config.
-4. Optional: create ignored `Packages/AgentSessionSync/agentsessionsync.config.psd1` from the example and set `ToolRoot` to the local AgentSessionSync clone.
+3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `ToolRoot` to your local MultiAgentWorkbenchStateVault (the self-contained real instance; the public MultiAgentWorkbenchStateSync is only the example template). Configure `VaultRoot` in that tool's own config.
+4. Optional: create ignored `Packages/AgentSessionSync/agentsessionsync.config.psd1` from the example and set `ToolRoot` to your local AgentSessionVault (the real instance; the public AgentSessionSync is only the example template).
 5. Create ignored `Projects/projects.json` from `Projects/projects.example.json` and set machine-local source project paths.
 6. Pull configured state/session packages into the workbench:
 
@@ -53,7 +53,7 @@ Push configured state/session packages:
 
 Root `Finish.ps1` continues across packages, prints a `Package | Action | Result | Reason` summary table, and returns non-zero if any package fails.
 
-Generated `Launchers\Shortcuts\` files are local-only and ignored by git.
+Generated `Launchers\Shortcuts\` `.lnk` files are tracked in git; regenerate them after clone with `Launchers\Create-Shortcuts.ps1` to fix machine-specific paths.
 
 Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or you want local-only synchronization.
 

@@ -1,10 +1,12 @@
 #requires -Version 5.1
 # Initial setup for the WorkbenchStateSync connector: connect to (clone) or create
-# the external MultiAgentWorkbenchStateSync tool repo, then write the connector config.
+# your private MultiAgentWorkbenchStateVault (self-contained tool + real state data),
+# then write the connector config. The public MultiAgentWorkbenchStateSync repo is
+# only the example template; override -RepoUrl/-ToolRoot to use it instead.
 [CmdletBinding()]
 param(
-    [string] $ToolRoot = 'C:\Project\MultiAgent\MultiAgentWorkbenchStateSync',
-    [string] $RepoUrl = 'https://github.com/cyphen156/MultiAgentWorkbenchStateSync.git',
+    [string] $ToolRoot = 'C:\Project\MultiAgent\MultiAgentWorkbenchStateVault',
+    [string] $RepoUrl = 'https://github.com/cyphen156/MultiAgentWorkbenchStateVault.git',
     [ValidateSet('Connect', 'Create')] [string] $Mode = 'Connect'
 )
 

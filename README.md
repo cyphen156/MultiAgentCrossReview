@@ -56,7 +56,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 .\Launchers\Create-Shortcuts.ps1
 ```
 
-생성된 `Launchers\Shortcuts\` 폴더는 gitignore 대상입니다.
+생성된 `Launchers\Shortcuts\`의 `.lnk`는 저장소에 **추적(tracked)**됩니다. 다만 바로가기에는 머신별 절대경로가 박히므로, clone 후 `Create-Shortcuts.ps1`를 다시 실행해 로컬 경로에 맞춥니다.
 
 특정 패키지만 실행할 수도 있습니다.
 
@@ -226,7 +226,7 @@ Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .
 .\Packages\WorkbenchStateSync\Finish.ps1   # 외부 도구 Finish.ps1 위임
 ```
 
-작업표시줄 고정용 `.lnk`는 루트 `Launchers/Create-Shortcuts.ps1`로 한곳에서 생성합니다. 생성된 `Launchers/Shortcuts/` 폴더는 gitignore 대상입니다.
+작업표시줄 고정용 `.lnk`는 루트 `Launchers/Create-Shortcuts.ps1`로 한곳에서 생성합니다. 생성된 `Launchers/Shortcuts/`의 `.lnk`는 저장소에 추적되며, 머신별 절대경로 때문에 clone 후 재생성해 맞춥니다.
 
 ## AgentSessionSync 패키지 어댑터
 

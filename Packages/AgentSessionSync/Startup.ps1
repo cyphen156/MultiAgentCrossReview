@@ -1,10 +1,12 @@
 #requires -Version 5.1
 # Initial setup for the AgentSessionSync connector: connect to (clone) or create
-# the external AgentSessionSync tool repo, then write the connector config.
+# your private AgentSessionVault (self-contained tool + real session JSONL), then
+# write the connector config. The public AgentSessionSync repo is only the example
+# template; override -RepoUrl/-ToolRoot to use it instead.
 [CmdletBinding()]
 param(
-    [string] $ToolRoot = 'C:\Project\MultiAgent\AgentSessionSync',
-    [string] $RepoUrl = 'https://github.com/cyphen156/AgentSessionSync.git',
+    [string] $ToolRoot = 'C:\Project\MultiAgent\AgentSessionVault',
+    [string] $RepoUrl = 'https://github.com/cyphen156/AgentSessionVault.git',
     [ValidateSet('Connect', 'Create')] [string] $Mode = 'Connect'
 )
 
