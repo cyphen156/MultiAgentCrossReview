@@ -36,7 +36,7 @@ if (-not $StartScript) {
         Write-Host 'Clone MultiAgentWorkbenchStateSync, then set ToolRoot in Packages/WorkbenchStateSync/workbenchstatesync.config.psd1.' -ForegroundColor DarkGray
         exit 0
     }
-    $StartScript = Join-Path $ToolRoot 'Start.ps1'
+    $StartScript = Join-Path $ToolRoot 'Launchers\Start.ps1'
 }
 
 $StartScript = [IO.Path]::GetFullPath($StartScript)

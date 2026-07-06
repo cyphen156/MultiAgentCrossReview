@@ -39,7 +39,7 @@ if (-not $FinishScript) {
         Write-Host 'Clone MultiAgentWorkbenchStateSync, then set ToolRoot in Packages/WorkbenchStateSync/workbenchstatesync.config.psd1.' -ForegroundColor DarkGray
         exit 0
     }
-    $FinishScript = Join-Path $ToolRoot 'Finish.ps1'
+    $FinishScript = Join-Path $ToolRoot 'Launchers\Finish.ps1'
 }
 
 $FinishScript = [IO.Path]::GetFullPath($FinishScript)

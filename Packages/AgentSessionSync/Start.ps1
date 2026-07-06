@@ -40,7 +40,7 @@ if (-not $StartScript) {
         Write-Host 'Create ignored Packages/AgentSessionSync/agentsessionsync.config.psd1 to enable it.' -ForegroundColor DarkGray
         exit 0
     }
-    $StartScript = Join-Path $ToolRoot 'Start.ps1'
+    $StartScript = Join-Path $ToolRoot 'Launchers\Start.ps1'
 }
 
 $StartScript = [IO.Path]::GetFullPath($StartScript)
