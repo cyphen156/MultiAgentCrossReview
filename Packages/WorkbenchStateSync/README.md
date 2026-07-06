@@ -8,19 +8,13 @@
 
 ## 설정
 
-실사용본(Vault)을 clone한 뒤, 그 경로를 `ToolRoot`로 지정합니다.
+실사용본(Vault)을 clone한 뒤, `Register.ps1`로 그 경로를 등록합니다.
 
 ```powershell
-Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
+.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
 ```
 
-```powershell
-@{
-    ToolRoot = 'C:\Project\MultiAgent\MultiAgentWorkbenchStateVault'
-    StartScript = ''
-    FinishScript = ''
-}
-```
+이 명령은 Vault 경로를 로컬 등록부 `UserSettings/sync-tools.json`(gitignore)에 기록합니다. `toolRoot`는 절대/상대경로 모두 가능하며 상대경로는 워크벤치 root 기준으로 해석됩니다. 기존 `workbenchstatesync.config.psd1`도 하위호환 fallback으로 인식됩니다.
 
 - `ToolRoot`가 없으면 이 어댑터는 **skip**합니다(에러 아님). 도구를 clone하고 경로를 넣으면 활성화됩니다.
 - 상태 저장소 경로(VaultRoot)와 동기화 범위는 `ToolRoot`의 외부 도구 config에서 설정합니다.

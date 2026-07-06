@@ -13,43 +13,39 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PackageRoot)
+$PackagesRoot = Split-Path -Parent $PackageRoot
+$RepoRoot = Split-Path -Parent $PackagesRoot
+. (Join-Path $PackagesRoot 'SyncToolRegistry.ps1')
 
-function Import-AgentSessionSyncConfig {
-    $candidates = @(
-        (Join-Path $PackageRoot 'agentsessionsync.config.psd1'),
-        (Join-Path $RepoRoot 'AgentSessionSync.local.psd1')
-    )
+$toolName = 'AgentSessionSync'
+$legacyConfig = Join-Path $PackageRoot 'agentsessionsync.config.psd1'
+$source = 'param'
 
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            return Import-PowerShellDataFile -LiteralPath $candidate
-        }
+if ($ToolRoot) {
+    $defaults = Get-SyncToolDefaults $toolName
+    if (-not $StartScript) { $StartScript = $defaults.StartScript }
+    $resolvedRoot = Resolve-ToolRootPath $RepoRoot $ToolRoot
+}
+else {
+    $entry = Resolve-SyncTool -RepoRoot $RepoRoot -ToolName $toolName -LegacyConfigPath $legacyConfig
+    if (-not $entry) {
+        Write-Host 'AgentSessionSync Start skipped: no ToolRoot registered and no Vault found.' -ForegroundColor DarkGray
+        Write-Host 'Register with: .\Packages\AgentSessionSync\Register.ps1 -ToolRoot <AgentSessionVault path>' -ForegroundColor DarkGray
+        exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
     }
-
-    return @{}
+    $resolvedRoot = $entry.ToolRoot
+    if (-not $StartScript) { $StartScript = $entry.StartScript }
+    $source = $entry.Source
 }
 
-$config = Import-AgentSessionSyncConfig
-if (-not $ToolRoot -and $config.ContainsKey('ToolRoot')) { $ToolRoot = [string]$config.ToolRoot }
-if (-not $StartScript -and $config.ContainsKey('StartScript')) { $StartScript = [string]$config.StartScript }
-
-if (-not $StartScript) {
-    if (-not $ToolRoot) {
-        Write-Host 'AgentSessionSync Start skipped: no ToolRoot configured.' -ForegroundColor DarkGray
-        Write-Host 'Create ignored Packages/AgentSessionSync/agentsessionsync.config.psd1 to enable it.' -ForegroundColor DarkGray
-        exit 0
-    }
-    $StartScript = Join-Path $ToolRoot 'Launchers\Start.ps1'
-}
-
-$StartScript = [IO.Path]::GetFullPath($StartScript)
+$StartScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $StartScript))
 if (-not (Test-Path -LiteralPath $StartScript)) {
     Write-Host "AgentSessionSync Start skipped: script not found: $StartScript" -ForegroundColor Yellow
-    exit 0
+    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
 }
 
 Write-Host 'AgentSessionSync Start' -ForegroundColor Cyan
+Write-Host "  source: $source"
 Write-Host "  script: $StartScript"
 
 if ($DryRun) {

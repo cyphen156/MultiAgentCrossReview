@@ -61,7 +61,8 @@ foreach ($pkg in $packages) {
         $global:LASTEXITCODE = 0
         & $scriptPath @scriptArgs
         $code = if ($null -ne $LASTEXITCODE) { [int]$LASTEXITCODE } else { 0 }
-        if ($code -ne 0) { $results += New-Result $name 'Start' 'FAIL' "exit code $code" $code }
+        if ($code -eq 200) { $results += New-Result $name 'Start' 'SKIP' 'not configured' 0 }
+        elseif ($code -ne 0) { $results += New-Result $name 'Start' 'FAIL' "exit code $code" $code }
         else { $results += New-Result $name 'Start' 'OK' '' 0 }
     }
     catch {

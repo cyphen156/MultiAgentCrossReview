@@ -11,20 +11,10 @@ This workbench package does not copy session-sync logic; it validates the local 
 Copy the example config to the ignored local config path:
 
 ```powershell
-Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Packages\AgentSessionSync\agentsessionsync.config.psd1
+.\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
 ```
 
-Then set `ToolRoot` to your local AgentSessionVault (the real instance; the public AgentSessionSync is only the example template):
-
-```powershell
-@{
-    ToolRoot = 'C:\Project\MultiAgent\AgentSessionVault'
-    StartScript = ''
-    FinishScript = ''
-}
-```
-
-`AgentSessionSync.local.psd1` at the repository root is also supported and is ignored by git.
+This registers your AgentSessionVault (the real instance; the public AgentSessionSync is only the example template) into the ignored local registry `UserSettings/sync-tools.json`. `toolRoot` may be absolute or relative (relative is resolved from the workbench root). The legacy `Packages/AgentSessionSync/agentsessionsync.config.psd1` (and root `AgentSessionSync.local.psd1`) still work as a backward-compatible fallback.
 
 ## Usage
 

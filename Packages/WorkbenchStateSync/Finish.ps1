@@ -14,41 +14,39 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $PackageRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PackageRoot)
+$PackagesRoot = Split-Path -Parent $PackageRoot
+$RepoRoot = Split-Path -Parent $PackagesRoot
+. (Join-Path $PackagesRoot 'SyncToolRegistry.ps1')
 
-function Import-WorkbenchStateSyncConfig {
-    $candidates = @(
-        (Join-Path $PackageRoot 'workbenchstatesync.config.psd1'),
-        (Join-Path $RepoRoot 'WorkbenchStateSync.local.psd1')
-    )
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            return Import-PowerShellDataFile -LiteralPath $candidate
-        }
+$toolName = 'WorkbenchStateSync'
+$legacyConfig = Join-Path $PackageRoot 'workbenchstatesync.config.psd1'
+$source = 'param'
+
+if ($ToolRoot) {
+    $defaults = Get-SyncToolDefaults $toolName
+    if (-not $FinishScript) { $FinishScript = $defaults.FinishScript }
+    $resolvedRoot = Resolve-ToolRootPath $RepoRoot $ToolRoot
+}
+else {
+    $entry = Resolve-SyncTool -RepoRoot $RepoRoot -ToolName $toolName -LegacyConfigPath $legacyConfig
+    if (-not $entry) {
+        Write-Host 'WorkbenchStateSync Finish skipped: no ToolRoot registered and no Vault found.' -ForegroundColor DarkGray
+        Write-Host 'Register with: .\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot <MultiAgentWorkbenchStateVault path>' -ForegroundColor DarkGray
+        exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
     }
-    return @{}
+    $resolvedRoot = $entry.ToolRoot
+    if (-not $FinishScript) { $FinishScript = $entry.FinishScript }
+    $source = $entry.Source
 }
 
-$config = Import-WorkbenchStateSyncConfig
-if (-not $ToolRoot -and $config.ContainsKey('ToolRoot')) { $ToolRoot = [string]$config.ToolRoot }
-if (-not $FinishScript -and $config.ContainsKey('FinishScript')) { $FinishScript = [string]$config.FinishScript }
-
-if (-not $FinishScript) {
-    if (-not $ToolRoot) {
-        Write-Host 'WorkbenchStateSync Finish skipped: no ToolRoot configured.' -ForegroundColor DarkGray
-        Write-Host 'Clone MultiAgentWorkbenchStateSync, then set ToolRoot in Packages/WorkbenchStateSync/workbenchstatesync.config.psd1.' -ForegroundColor DarkGray
-        exit 0
-    }
-    $FinishScript = Join-Path $ToolRoot 'Launchers\Finish.ps1'
-}
-
-$FinishScript = [IO.Path]::GetFullPath($FinishScript)
+$FinishScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $FinishScript))
 if (-not (Test-Path -LiteralPath $FinishScript)) {
     Write-Host "WorkbenchStateSync Finish skipped: script not found: $FinishScript" -ForegroundColor Yellow
-    exit 0
+    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
 }
 
 Write-Host 'WorkbenchStateSync Finish (adapter)' -ForegroundColor Cyan
+Write-Host "  source:   $source"
 Write-Host "  tool:     $FinishScript"
 Write-Host "  worktree: $RepoRoot"
 

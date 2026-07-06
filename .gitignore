@@ -30,10 +30,13 @@
 /Packages/WorkbenchStateSync/workbenchstatesync.config.psd1
 /Packages/AgentSessionSync/agentsessionsync.config.psd1
 
-# Local user settings. Keep only the public guide tracked.
+# Local user settings. Keep only the public guide and registry example tracked.
+# The real registry (UserSettings/sync-tools.json) may hold machine-local absolute
+# paths and must stay ignored.
 /UserSettings/**
 !/UserSettings/
 !/UserSettings/README.md
+!/UserSettings/sync-tools.example.json
 
 # Actual cross-review instances are private working records.
 # Keep only the public review framework and template in this repository.

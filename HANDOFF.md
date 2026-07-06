@@ -20,8 +20,8 @@ The `...Sync` repos are public examples/templates. The `...Vault` repos are the 
 
 1. Clone this public workbench repository.
 2. Clone or create the user-managed state repository.
-3. Create ignored `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1` from the example and set `ToolRoot` to your local MultiAgentWorkbenchStateVault (the self-contained real instance; the public MultiAgentWorkbenchStateSync is only the example template). Configure `VaultRoot` in that tool's own config.
-4. Optional: create ignored `Packages/AgentSessionSync/agentsessionsync.config.psd1` from the example and set `ToolRoot` to your local AgentSessionVault (the real instance; the public AgentSessionSync is only the example template).
+3. Register your MultiAgentWorkbenchStateVault (the self-contained real instance; the public MultiAgentWorkbenchStateSync is only the example template): `\.Packages\WorkbenchStateSync\Register.ps1 -ToolRoot <vault path>`. This writes the ignored local registry `UserSettings/sync-tools.json`. Configure `VaultRoot` in that tool's own config.
+4. Optional: register your AgentSessionVault the same way: `\.Packages\AgentSessionSync\Register.ps1 -ToolRoot <vault path>`. (Legacy `Packages/*/*.config.psd1` still works as a backward-compatible fallback.)
 5. Create ignored `Projects/projects.json` from `Projects/projects.example.json` and set machine-local source project paths.
 6. Pull configured state/session packages into the workbench:
 

@@ -25,6 +25,24 @@ UserSettings/machines/<name>.md   # machine-specific notes
 should load it before project-specific rules. Do not gate it behind tone/style
 keywords.
 
+## Sync tool registry
+
+`sync-tools.json` records which private Vaults this workbench's `Packages/*` adapters
+call. It is the single place the user declares "which sync tools do I use, and where
+are they."
+
+```text
+UserSettings/sync-tools.example.json   # public tracked example (placeholder paths)
+UserSettings/sync-tools.json           # real local registry, gitignored (may hold absolute paths)
+```
+
+- Create/update it with `Packages/<Tool>/Register.ps1 -ToolRoot <vault path>` (or `Startup.ps1`).
+- `toolRoot` may be absolute or relative; relative is resolved from the workbench root.
+- Because it can contain machine-local absolute paths, `sync-tools.json` is gitignored and
+  must never be committed or synchronized to a state repository. Only the `.example` is tracked.
+- Resolution order for each adapter: `sync-tools.json` first, then legacy `Packages/*/*.config.psd1`
+  (backward-compatible fallback), then auto-discovery of sibling Vault folders.
+
 The configured WorkbenchStateSync repository is the SSOT for user-managed
 workbench state. Files under this directory are materialized working copies.
 Use `Packages/WorkbenchStateSync/workbenchstatesync.ps1` to pull them from or

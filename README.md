@@ -86,10 +86,9 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 .\sync.ps1 -Project ExampleProject # 특정 프로젝트
 .\sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
 
-# 3) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 설정
-Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
-# workbenchstatesync.config.psd1의 ToolRoot를 실사용본 MultiAgentWorkbenchStateVault clone 경로로 수정
-# 상태 저장소 VaultRoot는 그 도구(Vault) 쪽 config에서 설정
+# 3) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 등록
+.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
+# 사용할 Vault를 UserSettings\sync-tools.json(로컬, gitignore)에 등록. 상태 저장소 VaultRoot는 그 Vault 쪽 config에서 설정
 .\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize
 
 # 4) 새 검토 주제 생성 + 진행
@@ -214,10 +213,10 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 설정:
 
 ```powershell
-Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .\Packages\WorkbenchStateSync\workbenchstatesync.config.psd1
+.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
 ```
 
-`workbenchstatesync.config.psd1`은 gitignore 대상입니다. 여기에 실사용본 `MultiAgentWorkbenchStateVault` clone 경로(`ToolRoot`)를 지정합니다. 상태 저장소 `VaultRoot`는 그 도구(Vault) 쪽 config에서 지정합니다.
+이 명령은 실사용본 `MultiAgentWorkbenchStateVault` 경로를 로컬 등록부 `UserSettings\sync-tools.json`(gitignore, 절대/상대경로 허용)에 기록합니다. 상태 저장소 `VaultRoot`는 그 Vault 쪽 config에서 지정합니다. (기존 `workbenchstatesync.config.psd1`도 하위호환 fallback으로 계속 인식됩니다.)
 
 예:
 
@@ -234,17 +233,17 @@ Copy-Item .\Packages\WorkbenchStateSync\workbenchstatesync.config.example.psd1 .
 실사용 `ToolRoot`는 자기완결 `AgentSessionVault`(도구+실세션 JSONL)를 가리키고, 공개 `AgentSessionSync`는 같은 도구의 공개 예시 템플릿입니다. 이 패키지는 `ToolRoot`의 `Launchers\Start.ps1` / `Launchers\Finish.ps1` 존재를 확인한 뒤 공통 옵션을 넘겨 호출하며, 세션 동기화 로직을 복제하지 않습니다.
 
 ```powershell
-Copy-Item .\Packages\AgentSessionSync\agentsessionsync.config.example.psd1 .\Packages\AgentSessionSync\agentsessionsync.config.psd1
+.\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
 ```
 
-`agentsessionsync.config.psd1`의 `ToolRoot`를 로컬 `AgentSessionVault` clone 경로로 지정합니다.
+이 명령은 로컬 `AgentSessionVault` 경로를 `UserSettings\sync-tools.json`(gitignore)에 등록합니다. (기존 `agentsessionsync.config.psd1`도 하위호환 fallback으로 계속 인식됩니다.)
 
 ```powershell
 .\Packages\AgentSessionSync\Start.ps1
 .\Packages\AgentSessionSync\Finish.ps1
 ```
 
-설정이 없거나 `ToolRoot`의 대상 스크립트가 없으면 루트 `Start.ps1` / `Finish.ps1`에서 이 패키지는 skip됩니다.
+등록이 없고 자동탐색으로도 Vault를 못 찾으면, 루트 `Start.ps1` / `Finish.ps1` 요약표에 이 패키지는 `OK`가 아니라 `SKIP`으로 표시됩니다(실패와 구분).
 
 ## ProjectSync 패키지
 

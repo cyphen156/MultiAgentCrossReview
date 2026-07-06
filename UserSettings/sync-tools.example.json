@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "tools": {
+    "AgentSessionSync": {
+      "enabled": true,
+      "toolRoot": "C:\\Path\\To\\AgentSessionVault",
+      "startScript": "Launchers\\Start.ps1",
+      "finishScript": "Launchers\\Finish.ps1",
+      "startupScript": "Launchers\\Initialize-AgentSessionSync.ps1"
+    },
+    "WorkbenchStateSync": {
+      "enabled": true,
+      "toolRoot": "C:\\Path\\To\\MultiAgentWorkbenchStateVault",
+      "startScript": "Launchers\\Start.ps1",
+      "finishScript": "Launchers\\Finish.ps1",
+      "startupScript": "Launchers\\Initialize-NewMachine.ps1"
+    }
+  }
+}
