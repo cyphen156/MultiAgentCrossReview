@@ -8,6 +8,7 @@ Rule layers:
 - Workbench rules: this file, plus `../Reviews/README.md`.
 - Project rules: `../Projects/<active>/RULES.md` when an active project exists.
 - User settings: private files under `../UserSettings/` when present.
+- Agent role notes: `../Claud/ROLE.md` and `../Codex/ROLE.md` add reviewer emphasis only. They do not redefine shared process rules.
 
 Priority:
 
@@ -26,14 +27,20 @@ Read-before-write gates:
 ## 1. Core Workbench Invariants
 
 - Claude and Codex are reviewers by default. Code application, final source edits, commits, and pushes are user-controlled unless the user explicitly delegates a specific operation.
-- Do not modify the source project repository listed in `../Projects/projects.json` from this workbench unless explicitly asked.
-- `Projects/<name>/baseline/` is the immutable reference mirror for review.
-- `Projects/<name>/edit/Claud/` and `Projects/<name>/edit/Codex/` are local agent-specific edit copies.
+- Treat every source repository registered in `../Projects/projects.json` as protected and read-only by default. Resolve write targets before acting; do not create, modify, delete, build in, commit, or push a protected source unless the user's current request explicitly authorizes that exact operation and target repository.
+- Authorization for this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory never implies authorization for the protected source repository.
+- Use the live source repository for current branch, HEAD, working-tree state, and document freshness. Verify drift-prone claims from live Git and inspect a cited document's last change before presenting it as current.
+- `Projects/<name>/baseline/` is an immutable snapshot for a formal review. Freeze and record its commit when the review starts; do not silently substitute it for live state or refresh it during that review.
+- Project rule files contain stable instructions, boundaries, and pointers. Do not copy volatile state into them, including current commit hashes, test totals, measurements, latest log names, or remaining-work lists.
+- Preserve measurement scope, unit, configuration, and aggregation labels when citing results. If a copied value has lost its label, return to the cited project evidence instead of guessing.
+- Treat agent memory and prior chat as potentially machine-local and stale unless an explicit transport contract says otherwise. They are retrieval aids, not authority for rules, design decisions, or current project state.
+- `Projects/<name>/edit/Claud/` and `Projects/<name>/edit/Codex/` are the canonical local agent edit slots. Session-, milestone-, or version-named full-tree candidates are temporary recovery material, never an SSOT or accepted design.
+- Before resetting an edit slot or deleting a legacy candidate, inspect its unique diff. Preserve accepted work as a focused patch or formal review artifact; discard rejected or superseded work instead of promoting another full-tree candidate.
 - The public workbench keeps only review framework files under `Reviews/`: `README.md`, `_TEMPLATE/`, and review tooling.
 - Actual review instances (`Reviews/<review-id>/`) are user-managed workbench state. Keep them in the configured state repository/worktree, not in the public workbench history.
 - Raw conversation/session transport belongs outside this public workbench.
-- Initial agent judgments must be independent: do not read the other agent's initial answer before writing your own initial answer.
-- After both initial answers exist, cross-review the other answer and preserve disagreements as useful signal.
+- Inside a formal `Reviews/<review-id>/` CrossReview only, initial agent judgments must be independent: do not read the other agent's initial answer before writing your own initial answer.
+- After both formal-review initial answers exist, cross-review the other answer and preserve disagreements as useful signal. Do not impose this staged sequence on ordinary conversations, maintenance audits, or user-directed cross-checks.
 - User callbacks are review inputs. Treat them as constraints or evidence to evaluate, not as automatic truth.
 - Agreement is not the goal. The goal is to expose design flaws, uncertainty, missing evidence, and boundary violations.
 

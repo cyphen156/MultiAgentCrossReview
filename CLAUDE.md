@@ -4,6 +4,13 @@ Entry point for Claude Code. Keep this file small. It imports only the routing s
 
 @Common/ROUTING.md
 
+Non-negotiable source guard:
+
+- Source repositories registered by `Projects/projects.json` are protected and read-only by default.
+- Before any write-capable command or file edit, resolve the target and compare it with every registered `sourceRepoRoot`.
+- Do not create, modify, delete, build in, commit, or push a protected source repository unless the user's current request explicitly authorizes that exact operation and target repository.
+- Permission to modify this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory does not transfer to the protected source repository.
+
 - General routing and trigger table: `Common/ROUTING.md`
 - Workbench process rules: `Common/SHARED_RULES.md`
 - Review state and record format: `Reviews/README.md`

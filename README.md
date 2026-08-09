@@ -183,8 +183,8 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 | 개인 설정 | `UserSettings/` (안내 `UserSettings/README.md`) | 로컬 | 어조·검토 태도·사적 워크플로 등 사용자 설정 |
 
 `run-review.ps1`은 활성 프로젝트(`projects.json` 첫 항목 또는 `-Project`)의 `RULES.md`를 범용 규칙과 함께 헤드리스 프롬프트에 주입합니다.  
-`RULES.md`가 없으면 경고 후 범용 규칙만으로 진행합니다.  
-즉, 헤드리스 리뷰 오케스트레이터는 누락된 프로젝트 룰에 대해 **fail-open**입니다.
+등록 프로젝트의 `RULES.md`가 없으면 리뷰를 중단합니다.
+즉, 헤드리스 리뷰 오케스트레이터는 누락된 프로젝트 룰에 대해 **fail-closed**입니다.
 
 커밋 메시지나 DevLog처럼 프로젝트별 형식이 있는 산출물은 활성 프로젝트의 `Projects/<name>/RULES.md`를 먼저 읽은 뒤 작성합니다.  
 해당 파일이 없으면 기억으로 작성하지 않고, 누락된 프로젝트 룰을 먼저 보고합니다.  

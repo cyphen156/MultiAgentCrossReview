@@ -22,6 +22,10 @@ Run real reviews in the configured state repository/worktree. Pull framework fix
 
 Codex와 Claude가 같은 주제에 먼저 독립적으로 판단하고, 서로의 결론을 양방향으로 교차 검증하는 공간이다.
 `Projects/<name>/baseline/` 미러가 읽기 전용 기준선이고, `Reviews/`는 판단·반박·근거·사용자 개입·최종 결정을 보존한다.
+이 단계 흐름은 정식 `Reviews/<review-id>/` 검토에만 적용한다. 일반 대화, 유지보수 감사, 사용자가 직접 전달한 교차검토에는 독립 초기판단 단계를 강제하지 않는다.
+
+정식 검토를 시작하기 전에 baseline 마커와 필요한 증거 파일이 목표 소스 커밋과 일치하는지 확인한다.
+검토가 시작된 뒤에는 live 저장소가 전진하더라도 해당 검토의 baseline을 자동 갱신하지 않는다. 새 기준이 필요하면 새 baseline과 검토 범위를 명시적으로 결정한다.
 
 ## 기본 흐름
 
@@ -99,7 +103,7 @@ Copy-Item Reviews\_TEMPLATE Reviews\2026-06-28_Example -Recurse
 ```
 
 `run-review.ps1`은 각 단계에서 다음 차례 에이전트를 헤드리스(읽기전용·무도구)로 불러 그 `REVIEW.md`
-단계 섹션을 채우고 커밋한다. (※ 단일 `REVIEW.md` 모델로 정렬 진행 중.)
+단계 섹션을 채우고 커밋한다. 현재 모델은 에이전트별 단일 `REVIEW.md`를 갱신하고 이력을 git에 남긴다.
 
 ## 운영 원칙
 

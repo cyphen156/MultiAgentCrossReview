@@ -45,4 +45,4 @@ If context already identifies the active project, load that project rule file ev
 - Load project rules only when the active project or touched paths make them relevant.
 - For commit-message or DevLog drafting, the active project rule file is mandatory when a registered project is active. Do not draft from memory when that file is missing; report the missing rule and ask for or create the project rule first.
 - Headless review orchestration may inject rules directly in prompts; in that path, the script routing is authoritative.
-- Current `Reviews/run-review.ps1` behavior is fail-open for missing project rules: it warns and continues with generic workbench rules only. Interactive commit-message and DevLog drafting remains fail-closed.
+- Registered-project reviews, interactive commit-message drafting, and DevLog drafting are fail-closed when the active project rule file is missing.

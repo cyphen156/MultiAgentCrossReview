@@ -4,9 +4,16 @@ Copy this file to `Projects/<name>/RULES.md` when registering a new target proje
 `Projects/<name>/` is ignored by git, so project-private rules stay local and do not enter the public workbench repository.
 
 `Reviews/run-review.ps1` injects the active project's `Projects/<name>/RULES.md` together with `Common/SHARED_RULES.md` into headless review prompts.
-If the file is missing, the script warns and proceeds with generic workbench rules only.
+For a registered project, the script stops if this file is missing.
 
 ---
+
+## 0. Stable Context And State Sources
+
+- Keep only stable project scope, rules, decisions, and source pointers here.
+- Do not copy volatile state such as the current branch or commit, test totals, measurements, latest log filename, or remaining-work list.
+- Define where current state and decisions are verified, using paths rather than copied values.
+- Use live Git for current repository state. Before quoting a project document as current, inspect its last change in Git.
 
 ## 1. Code Style
 

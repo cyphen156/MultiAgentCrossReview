@@ -5,7 +5,10 @@ Entry point for Codex. Keep this file small. It is a routing surface, not the fu
 Always apply these invariants:
 
 - Public workbench rules and private user settings outrank project-specific rules.
-- Do not modify the source project repository from this workbench unless the user explicitly asks for that exact operation.
+- Source repositories registered by `Projects/projects.json` are protected and read-only by default.
+- Before any write-capable command or file edit, resolve the target and compare it with every registered `sourceRepoRoot`.
+- Do not create, modify, delete, build in, commit, or push a protected source repository unless the user's current request explicitly authorizes that exact operation and target repository.
+- Permission to modify this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory does not transfer to the protected source repository.
 - Keep public review/process artifacts separate from private raw session data and local user settings.
 - For tasks that depend on repository rules, inspect the relevant rule file before drafting conclusions.
 

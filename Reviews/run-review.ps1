@@ -61,9 +61,16 @@ function Get-ProjectName {
 function Get-Baseline {
     $name = Get-ProjectName
     $marker = Join-Path $RepoRoot "Projects\$name\baseline\.baseline"
-    if (Test-Path $marker) { return ((Get-Content -LiteralPath $marker -TotalCount 1).Trim()) }
-    Write-Warning "baseline 마커 없음 ($marker). sync.ps1 미실행 → 'unsynced' 로 기록."
-    return "$(Get-Date -Format 'yyyy-MM-dd') unsynced"
+    if (-not (Test-Path $marker)) {
+        throw "Baseline marker not found: $marker — sync and verify the project baseline before starting a formal review."
+    }
+
+    $baseline = (Get-Content -LiteralPath $marker -TotalCount 1).Trim()
+    if (-not $baseline -or $baseline -match 'commit=unknown') {
+        throw "Invalid baseline marker: $marker — expected a verified source commit."
+    }
+
+    return $baseline
 }
 
 function Read-IfExists([string] $p) {
@@ -121,8 +128,7 @@ function Build-Prompt($step) {
             $projRules = Read-IfExists $projPath
         }
         else {
-            Write-Warning "Project rules not found: $projPath — copy Common\PROJECT_RULES.template.md and fill it when project-specific rules are needed. Continuing with generic rules only."
-            $projRules = "(The active project '$projName' has no RULES.md. Generic workbench rules only.)"
+            throw "Project rules not found: $projPath — registered project reviews require Projects/<name>/RULES.md."
         }
     }
     $readmeTxt = Read-IfExists $readme
