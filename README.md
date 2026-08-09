@@ -232,6 +232,8 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 `Packages/AgentSessionSync/`는 원문 대화 세션 JSONL을 옮기는 세션 동기화 도구를 이 워크벤치의 버튼 체계에 연결하는 얇은 어댑터입니다.
 실사용 `ToolRoot`는 자기완결 `AgentSessionVault`(도구+실세션 JSONL)를 가리키고, 공개 `AgentSessionSync`는 같은 도구의 공개 예시 템플릿입니다. 이 패키지는 `ToolRoot`의 `Launchers\Start.ps1` / `Launchers\Finish.ps1` 존재를 확인한 뒤 공통 옵션을 넘겨 호출하며, 세션 동기화 로직을 복제하지 않습니다.
 
+세션 도구의 전송 단위는 프로젝트가 아니라 **에이전트 앱 인덱스**입니다. 등록된 `ToolRoot` 하나가 이 PC의 모든 대화를 운반하므로, 워크벤치에 등록된 프로젝트 목록은 전송 범위와 무관합니다. 보존 정책(아카이브 계층·삭제 마커·`ActiveWindowDays`)도 그 도구 쪽 계약이며 이 어댑터에서 설정하지 않습니다.
+
 ```powershell
 .\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
 ```

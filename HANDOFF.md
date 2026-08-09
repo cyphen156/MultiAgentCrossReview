@@ -1,6 +1,6 @@
 # HANDOFF - Current Workspace Bootstrap
 
-Updated: 2026-07-04
+Updated: 2026-08-09
 
 This public repository is the MultiAgentCrossReview framework. Keep public process, templates, scripts, and package tooling here. User-managed state is synchronized separately.
 
@@ -70,35 +70,46 @@ Use `-SkipGitPull` or `-SkipGitPush` when the state repository has no remote or 
 
 Old public history is intentionally left public. Current `HEAD` tracks only framework review files under `Reviews/`; future real review instances are ignored and should move through the configured state repository.
 
-### Session retention: Codex leg is not done (assigned to Codex)
+### Session retention: both legs are done
 
-Updated: 2026-08-04. The Claude leg of AgentSessionVault was reworked; the Codex leg was deliberately left untouched so it can be picked up separately.
+Updated: 2026-08-09. Both the Claude and Codex legs of AgentSessionVault now share one retention contract, and the public AgentSessionSync template carries the same code and docs.
 
-**What changed on the Claude leg**
+**The contract**
 
-The transport unit is the agent app index, not a project. `ProjectRoot` no longer limits scope. Beyond that, retention now has two tiers:
+The transport unit is the agent app index, not a project. `ProjectRoot` anchors Start/Finish only and never limits scope. Retention has two tiers:
 
-- `Claude/projects/<key>/` is the active working set and is the only thing Pull restores.
-- `Claude/archive/<key>/` is permanent storage and is never restored automatically.
-- Push **moves** (never deletes) any transcript the app has already dropped locally into the archive tier, guarded by `ActiveWindowDays` (30) and a git-based recency check that ignores renames.
-- `Launchers\Restore-ArchivedSession.ps1` brings an archived session back. An archive without a restore path is a grave.
+- `Claude/projects/<key>/`, `ClaudeApp/claude-code-sessions/`, and `Codex/sessions/<cwd-key>/YYYY/MM/DD/` are the active working set and the only thing Pull restores.
+- `Claude/archive/<key>/`, `ClaudeApp/archive/`, and `Codex/archive/<cwd-key>/YYYY/MM/DD/` are permanent storage and are never restored automatically.
+- Push **moves** into the archive tier and never deletes from the vault, guarded by `ActiveWindowDays` (30).
+- `Launchers\Restore-ArchivedSession.ps1` brings an archived session back, from either agent's archive. An archive without a restore path is a grave.
 - The app's `deleted_<id>` markers are transported and treated as tombstones in both directions. They retire the list entry only; the transcript is preserved.
 
-Rationale: the app enforces its own retention window, but this repository kept everything and Pull fed it straight back, so the index could never shrink. Preserving everything is correct; re-seeding the working set with it is not.
+Rationale: the apps enforce their own retention window, but this repository kept everything and Pull fed it straight back, so the index could never shrink. Preserving everything is correct; re-seeding the working set with it is not.
 
-**What Codex needs**
+**Where the two agents deliberately differ**
 
-The same two problems exist on the Codex leg and none of the above applies to it yet.
+Claude Code prunes on its own schedule, so a transcript missing from the local app index means *aged* — that plus a git-based recency check (renames excluded) is the archive signal. Codex prunes nothing, so local absence means *the user deleted it* and must never be read as aging. The Codex signals are instead:
 
-1. **Deletions do not propagate.** `Push-Sessions.ps1` copies with `robocopy /E` and never removes, so rollouts deleted from `~/.codex/sessions` stay in the vault and return on the next Pull. On 2026-08-04, 9 rollouts (~302MB) were deleted locally and every one of them is still in `origin/main`. Do **not** solve this with `/PURGE` — it would delete the other host's sessions that this host has never pulled.
-2. **The index resurrects entries.** `Sync-CodexIndex.ps1` unions by `id` with newest `updated_at` winning, so removing a line locally is undone by the next merge. This union is correct for its original purpose (both hosts write the same file) and must not simply be dropped.
-3. **No deletion signal exists.** Claude leaves `deleted_<id>` markers; Codex does not. A Codex tombstone has to be invented or the archive move has to be driven by something else — the index entry's absence combined with an age window is the obvious candidate, mirroring `Get-TransportRecentPaths`.
-4. **Size is the Codex problem, not Claude's.** `Codex/` is 728MB against `Claude/` at 198MB, and `.git` is 770MB. Two rollouts already exceed GitHub's 100MiB per-file limit and are excluded from transport by the guard in `Push-Sessions.ps1` (step 3d), which prints what it skipped on every run. Compressed transport (`.gz`) or Git LFS would remove that ceiling; neither has been decided.
+- explicit — the rollout is present in `~/.codex/archived_sessions`; this always outranks age;
+- aging — the **top-level** `timestamp` of the rollout's last record is older than `ActiveWindowDays`.
 
-**Constraints to respect**
+File mtime (`git checkout` rewrites it), the rollout filename's start date (a long-running thread would be misjudged), and the current host's cwd are not valid age criteria. A nested `payload.timestamp` is not the record timestamp either — the reader parses each record and reads only the top-level property.
 
-- Never delete from the vault. Move to an archive tier, as the Claude leg does.
-- Whatever criterion is chosen must be computable identically on both hosts. File mtime is not — `git checkout` rewrites it. Use git history or content timestamps.
-- Keep the exclusion loud. A silent partial transport is the failure class this repository just finished removing.
+**Storage layout: path = A, tag = B**
 
-Reference implementation to mirror: `Launchers\AgentSessionSync.Common.ps1` (`Get-TransportRecentPaths`, `Move-ToTransportArchive`, `Get-ClaudeDeletionMarkers`), `Launchers\Push-Sessions.ps1` steps 3d/3e/3f, and the assertions in `Launchers\tests\Test-AgentSessionSync.ps1`.
+Codex vault copies are split by a deterministic key derived from the rollout's first `session_meta.payload.cwd`; Pull strips that axis back off, so the local app tree is untouched. Semantic project membership is many-to-many and lives in `Codex/session_projects.jsonl` (`Set-CodexSessionProjects.ps1`), so re-classifying never moves a large rollout. Push runs unattended and cannot judge subject — that is why the physical path uses the mechanical key and not the topic.
+
+**Standing constraints**
+
+- Never delete from the vault. Move to an archive tier.
+- Never use `robocopy /PURGE` against the vault — it would delete the other host's sessions this host has never pulled.
+- Any age criterion must be computable identically on both hosts.
+- Agent memory files (`~/.claude/projects/<key>/memory/*.md`, `~/.codex/memories`) are machine-local and are not transported by this tool.
+- Entries whose transcript is present in neither tier are neither deleted nor auto-archived — the other host may hold the only copy. Push warns and leaves them in the active index.
+- Rollouts near GitHub's 100MiB per-file limit are transported as `.jsonl.gz`; the secret scan runs on the local source **before** the copy into the worktree.
+
+Reference implementation: `Launchers\AgentSessionSync.Common.ps1`, `Launchers\Push-Sessions.ps1` steps 3a-3g, and the assertions in `Launchers\tests\Test-AgentSessionSync.ps1`.
+
+**Still open (not this contract's scope)**
+
+Codex sidebar reduction is a separate matter: Push cleans the vault and the local working set but never touches `state_5.sqlite`, so the app's own list is repaired only through `Repair-CodexThreadVisibility.ps1`, which stops at `version-mismatch` when the PATH CLI is older than the restored rollout format. Git LFS has not been decided.
