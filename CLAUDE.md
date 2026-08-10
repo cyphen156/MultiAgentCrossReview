@@ -4,6 +4,11 @@ Entry point for Claude Code. Keep this file small. It imports only the routing s
 
 @Common/ROUTING.md
 
+Session start gate:
+
+- If `UserSettings/preferences.md` exists in this workspace, read it in full before responding or taking task action. If it does not exist, continue normally.
+- This file is scoped to the workspace root, not to an entry in `Projects/projects.json`. Another workspace's preferences never apply here.
+
 Non-negotiable source guard:
 
 - Source repositories registered by `Projects/projects.json` are protected and read-only by default.

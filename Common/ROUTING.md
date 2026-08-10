@@ -8,7 +8,9 @@ It is intentionally shorter than the detailed rule files.
 - Workbench rules and user settings outrank project-specific rules.
 - Project rules are plugins. They apply only inside the workbench and user-preference boundaries.
 - Always load local user settings from `UserSettings/` private files when present. Do not gate this layer behind tone/style keywords.
-- Do not modify a source project repository from this workbench unless the user explicitly asks for that exact operation.
+- Registered source repositories (`Projects/projects.json` → `sourceRepoRoot`) are read-only by default. Resolve the write target before acting. Permission for this workbench, a baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory never transfers to them.
+- Current state comes from live Git and current project documents — never from a rule file, a mirror, or memory. Check a document's last change before quoting it as current.
+- Agent memory and prior chat are machine-local retrieval aids. They are not authority for rules, decisions, or current project state.
 - Keep public review/process artifacts separate from private raw sessions, local credentials, local user settings, and ignored project mirrors.
 - When a task depends on rules, inspect the relevant rule file before giving a final answer or drafting an artifact.
 - If routing is uncertain, read less but read the right anchor: `Common/SHARED_RULES.md` for workbench behavior, `Projects/<active>/RULES.md` for project behavior, and `UserSettings/` private files for local user settings when present.

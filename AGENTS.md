@@ -2,6 +2,11 @@
 
 Entry point for Codex. Keep this file small. It is a routing surface, not the full rulebook.
 
+Session start gate:
+
+- If `UserSettings/preferences.md` exists in this workspace, read it in full before responding or taking task action. If it does not exist, continue normally.
+- This file is scoped to the workspace root, not to an entry in `Projects/projects.json`. Another workspace's preferences never apply here.
+
 Always apply these invariants:
 
 - Public workbench rules and private user settings outrank project-specific rules.
@@ -9,6 +14,8 @@ Always apply these invariants:
 - Before any write-capable command or file edit, resolve the target and compare it with every registered `sourceRepoRoot`.
 - Do not create, modify, delete, build in, commit, or push a protected source repository unless the user's current request explicitly authorizes that exact operation and target repository.
 - Permission to modify this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory does not transfer to the protected source repository.
+- Current state comes from live Git and current project documents — never from a rule file, a mirror, or memory. Check a document's last change before quoting it as current.
+- Agent memory and prior chat are machine-local retrieval aids. They are not authority for rules, decisions, or current project state.
 - Keep public review/process artifacts separate from private raw session data and local user settings.
 - For tasks that depend on repository rules, inspect the relevant rule file before drafting conclusions.
 

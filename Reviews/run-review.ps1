@@ -60,6 +60,10 @@ function Get-ProjectName {
 # ===== Baseline: Projects/<name>/baseline/.baseline 의 기준 커밋 =====
 function Get-Baseline {
     $name = Get-ProjectName
+    # 활성 프로젝트가 없으면 고정할 원본 baseline 자체가 없다. 워크벤치 자체를 주제로 한
+    # 검토까지 프로젝트 baseline 을 요구하면 열 수 없는 검토가 생긴다.
+    if (-not $name) { return "$(Get-Date -Format 'yyyy-MM-dd') no-project" }
+
     $marker = Join-Path $RepoRoot "Projects\$name\baseline\.baseline"
     if (-not (Test-Path $marker)) {
         throw "Baseline marker not found: $marker — sync and verify the project baseline before starting a formal review."
@@ -138,6 +142,17 @@ function Build-Prompt($step) {
         'You are Claude, an independent architecture reviewer with a conservative boundary-checking prior.'
     }
 
+    # 대화형 진입과 헤드리스 진입이 같은 규칙을 받아야 한다.
+    # ROLE 파일은 각 에이전트 검토 성향의 유일한 SSOT 이므로, 한 줄 요약으로 대체하면
+    # ROLE 을 고쳐도 자동 검토에는 반영되지 않는다.
+    $roleFile = if ($step.Agent -eq 'Codex') { 'Codex\ROLE.md' } else { 'Claud\ROLE.md' }
+    $roleTxt  = Read-IfExists (Join-Path $RepoRoot $roleFile)
+
+    # 사용자 설정은 항상 적용되는 층이다. 다만 UserSettings 전체가 아니라 검토 태도만
+    # 담긴 preferences.md 하나만 넣는다. session.md·패치 기록·로컬 등록부는 사적 자료이고
+    # 검토 판단에 필요하지도 않다.
+    $prefTxt = Read-IfExists (Join-Path $RepoRoot 'UserSettings\preferences.md')
+
     # 초기판단은 주제(README 의 Callback 제외)만. 이후 단계는 README 전체 + 상대 REVIEW.
     $topicBlock = ''
     $otherBlock = ''
@@ -151,14 +166,24 @@ function Build-Prompt($step) {
         }
     }
 
+    $prefBlock = if ($prefTxt) { "`n[User settings - always applied]`n$prefTxt`n" } else { '' }
+    $roleBlock = if ($roleTxt) { "`n[Agent role notes - $roleFile]`n$roleTxt`n" } else { '' }
+
     @"
 $roleDesc
 
 [Shared rules - generic workbench]
 $rules
-
+$prefBlock$roleBlock
 [Project rules - $projName]
 $projRules
+
+[Review record contract - enforced by the orchestrator, not by you]
+- The baseline is a frozen read-only reference. It is not refreshed during this review.
+- initial: the other agent's answer and user callbacks are sealed. Judge independently.
+- After initial: the other REVIEW and callbacks are provided above. Evaluate them; do not assume they are correct.
+- You do not write, commit, or transition any file. The script records your output and manages status.
+- Preserve disagreement. Agreement is not the goal.
 
 [Review topic / README]
 $topicBlock
@@ -245,6 +270,10 @@ function Invoke-Agent($step, [string] $promptFile) {
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $exitCode = -1
+    # Codex 는 -C 로 작업 디렉터리가 고정되어 루트 AGENTS.md 발견이 보장된다.
+    # Claude CLI 에는 해당 인자가 없으므로, 스크립트를 어디서 호출하든 CLAUDE.md 발견 조건이
+    # 같도록 저장소 루트로 이동해서 실행한다. 두 에이전트의 최초 진입을 같게 맞추는 것이 목적이다.
+    Push-Location -LiteralPath $RepoRoot
     try {
         if ($step.Agent -eq 'Codex') {
             $result = $prompt | & $CLI.Codex exec --ephemeral --sandbox read-only --skip-git-repo-check -C $RepoRoot - 2> $stderrFile
@@ -256,6 +285,7 @@ function Invoke-Agent($step, [string] $promptFile) {
         $exitCode = $LASTEXITCODE
     }
     finally {
+        Pop-Location
         $OutputEncoding = $prevEnc
         $ErrorActionPreference = $prevEap
     }
