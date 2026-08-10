@@ -1,7 +1,9 @@
 ---
 Review-ID: <id>
 Author: Claude
-Baseline: <commit=...>
+Baseline: <snapshot marker>   # Projects/<name>/baseline/.baseline 마커 전문. 커밋만으로 정의되지 않는다.
+Project-Rules: <source>       # Projects/<name>/RULES.md 또는 shared-only (...). run-review.ps1 이 기록.
+Role-Source: <source>         # Claud/ROLE.md 또는 built-in-fallback. run-review.ps1 이 기록.
 Session-Id:            # 선택 — 이 검토를 만든 대화 세션(AgentSessionSync) 라벨. 경로/내용 아님.
 Status: unstarted      # unstarted -> Initial -> Cross-reviewed -> Revised -> Evidence-checked
 ---

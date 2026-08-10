@@ -20,7 +20,7 @@
 
 param(
     [Parameter(Mandatory = $true)] [string] $Topic,
-    [string] $Project = '',       # 비우면 Projects/projects.json 첫 항목
+    [string] $Project = '',       # 비우면 단일 등록 프로젝트. 프로젝트 없는 검토는 -Project none
     [int]    $Steps   = 1,
     [switch] $Yes,
     [switch] $DryRun,
@@ -47,22 +47,72 @@ $claudeExe = Get-ChildItem -LiteralPath $claudeRoot -Filter 'claude.exe' -File -
     Select-Object -First 1 -ExpandProperty FullName
 $CLI = @{ Codex = "$env:APPDATA\npm\codex.cmd"; Claude = $claudeExe }
 
-# ===== 활성 프로젝트명: -Project 우선, 없으면 projects.json 첫 항목 =====
+# ===== 활성 프로젝트명: -Project 우선, 없으면 단일 등록 프로젝트 =====
 function Get-ProjectName {
-    if ($Project) { return $Project }
+    if ($Project) {
+        if ($Project -ieq 'none') { return '' }
+        return $Project
+    }
+
     $manifest = Join-Path $RepoRoot 'Projects\projects.json'
     if (Test-Path $manifest) {
-        try { return (Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json).projects[0].name } catch { }
+        try {
+            $entries = @((Get-Content -LiteralPath $manifest -Raw -Encoding UTF8 | ConvertFrom-Json).projects)
+        }
+        catch {
+            throw "Invalid project manifest: $manifest`n$($_.Exception.Message)"
+        }
+
+        $names = @($entries | ForEach-Object { $_.name } | Where-Object { $_ })
+        if ($names.Count -eq 1) { return [string]$names[0] }
+        if ($names.Count -gt 1) {
+            throw "Multiple projects are registered. Specify -Project <name>, or use -Project none for a workbench-only review."
+        }
     }
     return ''
 }
 
-# ===== Baseline: Projects/<name>/baseline/.baseline 의 기준 커밋 =====
+# ===== Baseline: Projects/<name>/baseline/.baseline 의 로컬 스냅숏 표식 =====
 function Get-Baseline {
     $name = Get-ProjectName
-    # 활성 프로젝트가 없으면 고정할 원본 baseline 자체가 없다. 워크벤치 자체를 주제로 한
-    # 검토까지 프로젝트 baseline 을 요구하면 열 수 없는 검토가 생긴다.
-    if (-not $name) { return "$(Get-Date -Format 'yyyy-MM-dd') no-project" }
+    # 프로젝트가 없는 검토는 현재 워크벤치 로컬 상태를 기준으로 삼는다. 커밋만으로
+    # 정의하지 않고 clean/dirty 를 함께 기록해 미커밋 변경의 존재를 숨기지 않는다.
+    if (-not $name) {
+        $safeRepo = $RepoRoot.Replace('\', '/')
+
+        # PS 5.1 에서 $ErrorActionPreference='Stop' 상태로 네이티브 stderr 를 리다이렉트하면
+        # 각 줄이 ErrorRecord 로 감싸여 종료 오류가 된다. 그러면 아래 unknown 대체 경로가
+        # 정작 그 실패 상황에서 실행되지 않는다. sync.ps1 Get-SourceWorktreeState 와 같은
+        # 방식으로 이 구간만 완화한다. 실패해도 워크벤치 검토 자체는 막지 않는다.
+        $head    = 'unknown'
+        $state   = 'unknown'
+        $headErr = ''
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $headOut = & git -c "safe.directory=$safeRepo" -C $RepoRoot rev-parse --short HEAD 2>&1
+            $headCode = $LASTEXITCODE
+            $headText = (($headOut | ForEach-Object { $_.ToString() }) -join ' ').Trim()
+            if ($headCode -eq 0 -and $headText -match '^[0-9a-f]{7,40}$') { $head = $headText }
+            else { $headErr = if ($headText) { $headText } else { "git rev-parse 가 종료 코드 $headCode 로 실패했습니다." } }
+
+            # 여기서는 clean/dirty 만 필요하므로 stderr 를 버려 출력 줄 수를 오염시키지 않는다.
+            $porcelain = @(& git -c "safe.directory=$safeRepo" -C $RepoRoot status --porcelain 2>$null)
+            if ($LASTEXITCODE -eq 0) { $state = if ($porcelain.Count -eq 0) { 'clean' } else { 'dirty' } }
+        }
+        catch {
+            $headErr = $_.Exception.Message
+        }
+        finally {
+            $ErrorActionPreference = $previous
+        }
+
+        if ($head -eq 'unknown') {
+            Write-Warning "워크벤치 HEAD 를 읽지 못했습니다. 마커에 commit=unknown 이 기록됩니다."
+            if ($headErr) { Write-Warning "  사유: $headErr" }
+        }
+        return "$(Get-Date -Format 'yyyy-MM-ddTHH:mm') workbench-local | commit=$head worktree=$state"
+    }
 
     $marker = Join-Path $RepoRoot "Projects\$name\baseline\.baseline"
     if (-not (Test-Path $marker)) {
@@ -70,8 +120,8 @@ function Get-Baseline {
     }
 
     $baseline = (Get-Content -LiteralPath $marker -TotalCount 1).Trim()
-    if (-not $baseline -or $baseline -match 'commit=unknown') {
-        throw "Invalid baseline marker: $marker — expected a verified source commit."
+    if (-not $baseline) {
+        throw "Invalid baseline marker: $marker — expected a non-empty local snapshot marker."
     }
 
     return $baseline
@@ -123,18 +173,27 @@ function Get-NextStep {
 }
 
 function Build-Prompt($step) {
+    $routing   = Read-IfExists (Join-Path $RepoRoot 'Common\ROUTING.md')
     $rules     = Read-IfExists (Join-Path $RepoRoot 'Common\SHARED_RULES.md')
+    if (-not $routing) { throw 'Mandatory workbench routing not found: Common/ROUTING.md' }
+    if (-not $rules) { throw 'Mandatory shared rules not found: Common/SHARED_RULES.md' }
     $projName  = Get-ProjectName
     $projRules = ''
+    $projRulesSource = 'shared-only (no active project)'
     if ($projName) {
         $projPath = Join-Path $RepoRoot "Projects\$projName\RULES.md"
         if (Test-Path $projPath) {
             $projRules = Read-IfExists $projPath
+            $projRulesSource = "Projects/$projName/RULES.md"
         }
         else {
-            throw "Project rules not found: $projPath — registered project reviews require Projects/<name>/RULES.md."
+            Write-Warning "Project rules not found: $projPath — continuing with shared workbench rules only."
+            $projRules = "(No project-specific RULES.md is configured for '$projName'. Shared workbench rules only.)"
+            $projRulesSource = "shared-only (no Projects/$projName/RULES.md)"
         }
     }
+    $step['ProjectRulesSource'] = $projRulesSource
+
     $readmeTxt = Read-IfExists $readme
     $roleDesc  = if ($step.Agent -eq 'Codex') {
         'You are Codex, an independent architecture reviewer with an implementation-feasibility prior.'
@@ -147,6 +206,13 @@ function Build-Prompt($step) {
     # ROLE 을 고쳐도 자동 검토에는 반영되지 않는다.
     $roleFile = if ($step.Agent -eq 'Codex') { 'Codex\ROLE.md' } else { 'Claud\ROLE.md' }
     $roleTxt  = Read-IfExists (Join-Path $RepoRoot $roleFile)
+    $roleSource = $roleFile.Replace('\', '/')
+    if (-not $roleTxt) {
+        Write-Warning "Agent role file not found: $roleFile — continuing with the built-in role description."
+        $roleTxt = '(Role file missing. The built-in role description above is the fallback for this step.)'
+        $roleSource = 'built-in-fallback'
+    }
+    $step['RoleSource'] = $roleSource
 
     # 사용자 설정은 항상 적용되는 층이다. 다만 UserSettings 전체가 아니라 검토 태도만
     # 담긴 preferences.md 하나만 넣는다. session.md·패치 기록·로컬 등록부는 사적 자료이고
@@ -167,21 +233,26 @@ function Build-Prompt($step) {
     }
 
     $prefBlock = if ($prefTxt) { "`n[User settings - always applied]`n$prefTxt`n" } else { '' }
-    $roleBlock = if ($roleTxt) { "`n[Agent role notes - $roleFile]`n$roleTxt`n" } else { '' }
+    $roleBlock = "`n[Agent role notes - $roleSource]`n$roleTxt`n"
+    $projectLabel = if ($projName) { $projName } else { 'none' }
 
     @"
 $roleDesc
 
+[Routing - mandatory workbench entry]
+$routing
+
 [Shared rules - generic workbench]
 $rules
 $prefBlock$roleBlock
-[Project rules - $projName]
+[Project rules - $projectLabel; source=$projRulesSource]
 $projRules
 
 [Review record contract - enforced by the orchestrator, not by you]
-- The baseline is a frozen read-only reference. It is not refreshed during this review.
+- Baseline for this review: $Baseline
+- A project baseline is the normal read-only reference copy outside formal review and is copied from local source files, not defined solely by a commit. For this formal review, the recorded snapshot marker above is frozen and the baseline is not refreshed during the review.
 - initial: the other agent's answer and user callbacks are sealed. Judge independently.
-- After initial: the other REVIEW and callbacks are provided above. Evaluate them; do not assume they are correct.
+- After initial: the other REVIEW and callbacks are included under `[Review topic / README]` below. Evaluate them; do not assume they are correct.
 - You do not write, commit, or transition any file. The script records your output and manages status.
 - Preserve disagreement. Agreement is not the goal.
 
@@ -222,6 +293,8 @@ function Write-Record($step, [string] $body) {
 Review-ID: $Topic
 Author: $($step.Agent)
 Baseline: $Baseline
+Project-Rules: $($step.ProjectRulesSource)
+Role-Source: $($step.RoleSource)
 Session-Id:
 Status: $($step.NewStatus)
 ---

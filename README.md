@@ -8,6 +8,8 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 이 저장소는 **실제 검토 기록의 공개 아카이브가 아닙니다.** 검토 프로세스, 템플릿, 도구, 정제된 실예시만 둡니다.  
 실제 검토 기록과 사용자별 설정은 사용자가 직접 지정한 **상태 저장소(state repository)**에 둡니다.
 
+기본 구현과 자동 오케스트레이터가 공식 지원하는 검토자 조합은 **Claude + Codex 두 개**입니다. 다른 에이전트 추가는 MIT 라이선스에 따라 역할 파일, CLI 호출부, 편집 슬롯, 리뷰 단계와 템플릿을 사용자가 직접 확장할 수 있지만 공식 지원 범위에는 포함되지 않습니다.
+
 ## 저장소 역할
 
 | 저장소 | 성격 | 역할 |
@@ -107,7 +109,7 @@ Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
 ## 검토 흐름
 
 ```text
-검토 주제(README) + 기준 커밋
+검토 주제(README) + baseline 스냅숏 마커
     ↓
 Codex 독립 판단 + Claude 독립 판단   (서로 안 봄)
     ↓
@@ -128,7 +130,8 @@ Codex 독립 판단 + Claude 독립 판단   (서로 안 봄)
 ## 저장소 구조
 
 ```text
-CLAUDE.md / AGENTS.md       각 에이전트 진입점 (얇은 포인터)
+CLAUDE.md / AGENTS.md       각 에이전트의 필수 진입점
+Common/ROUTING.md           필수 경량 라우팅 표면
 Common/SHARED_RULES.md      범용 워크벤치 규칙 (SSOT)
 Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
 UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
@@ -154,7 +157,7 @@ Reviews/                    검토 프레임워크 (공개)
   _TEMPLATE/                새 검토 주제 템플릿
   run-review.ps1            반자동 교차검증 오케스트레이터
   <review-id>/              실제 검토 인스턴스 (로컬 전용·gitignore, 상태 저장소로 동기화)
-    README.md               주제 · 기준 커밋 · 범위 · 상태 · Callback
+    README.md               주제 · baseline 스냅숏 마커 · 범위 · 상태 · Callback
     Claud/REVIEW.md + artifacts/
     Codex/REVIEW.md + artifacts/
     DECISION.md             사용자 최종 판정
@@ -172,23 +175,25 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 
 ## 규칙 계층
 
-규칙은 성격에 따라 세 층으로 나눕니다.  
+규칙은 성격과 적용 시점에 따라 나눕니다.
 공개 레포에는 **범용 규칙과 템플릿만** 들어가고,  
 특정 프로젝트·개인에 묶이는 규칙은 로컬 전용(gitignore)입니다.
 
-| 층 | 위치 | 공개 | 내용 |
+| 층 | 위치 | 존재 | 적용 기준 |
 |---|---|---|---|
-| 범용 워크벤치 | `Common/SHARED_RULES.md`, `Reviews/README.md` | 공개 | 독립판단→교차검증 절차, 범용 커밋 본문 구조, Reviews 운영 |
-| 프로젝트별 | `Projects/<name>/RULES.md` (템플릿 `Common/PROJECT_RULES.template.md`) | 로컬 | 코드 스타일·인코딩·줄바꿈·아키텍처·DevLog 경로·커밋 제목 관례 |
-| 개인 설정 | `UserSettings/` (안내 `UserSettings/README.md`) | 로컬 | 어조·검토 태도·사적 워크플로 등 사용자 설정 |
+| 네이티브 진입 | `AGENTS.md`, `CLAUDE.md` | 워크벤치 필수 | 해당 에이전트 세션에서 항상 |
+| 경량 라우팅 | `Common/ROUTING.md` | 워크벤치 필수 | 항상 |
+| 범용 워크벤치 | `Common/SHARED_RULES.md` | 워크벤치 필수 | 항상 |
+| 개인 선호 | `UserSettings/preferences.md` (안내 `UserSettings/README.md`) | 사용자 선택 | 파일이 있으면 이 워크벤치에서 항상 |
+| 로컬 상태·인계 | 그 외 `UserSettings/` 파일 | 사용자 선택 | 해당 작업이 그 파일의 목적에 해당할 때만 |
+| 프로젝트별 | `Projects/<name>/RULES.md` (템플릿 `Common/PROJECT_RULES.template.md`) | 사용자 선택 | 파일이 있으면 해당 활성 프로젝트에서 반드시 |
+| 정식 CrossReview | `Reviews/README.md`, `Reviews/<review-id>/` | 프로세스 선택 | 정식 검토가 가동될 때만 |
 
-`run-review.ps1`은 활성 프로젝트(`projects.json` 첫 항목 또는 `-Project`)의 `RULES.md`를 범용 규칙과 함께 헤드리스 프롬프트에 주입합니다.  
-등록 프로젝트의 `RULES.md`가 없으면 리뷰를 중단합니다.
-즉, 헤드리스 리뷰 오케스트레이터는 누락된 프로젝트 룰에 대해 **fail-closed**입니다.
+`run-review.ps1`은 `-Project`로 지정한 프로젝트를 사용합니다. 생략했을 때 등록 프로젝트가 정확히 하나면 그 프로젝트를 사용하고, 여러 개면 임의로 첫 항목을 고르지 않고 명시적 선택을 요구합니다. 워크벤치 자체 검토는 `-Project none`으로 시작할 수 있습니다.
 
-커밋 메시지나 DevLog처럼 프로젝트별 형식이 있는 산출물은 활성 프로젝트의 `Projects/<name>/RULES.md`를 먼저 읽은 뒤 작성합니다.  
-해당 파일이 없으면 기억으로 작성하지 않고, 누락된 프로젝트 룰을 먼저 보고합니다.  
-즉, 대화형 커밋/DevLog 초안 작성은 **fail-closed**입니다.
+활성 프로젝트의 `RULES.md`가 있으면 범용 규칙과 함께 헤드리스 프롬프트에 반드시 주입합니다. 파일이 없으면 오류가 아니며, 경고와 `shared-only` 기록을 남기고 범용 규칙으로 진행합니다.
+
+커밋 메시지는 프로젝트 규칙이 없을 때 범용 본문 구조로 작성할 수 있습니다. DevLog는 프로젝트 규칙이 없더라도 사용자가 경로와 형식을 명시했거나 현재 프로젝트 문서에서 안전하게 확인할 수 있으면 작성할 수 있습니다. 프로젝트 전용 제목, 경로, 인코딩, 템플릿이나 관례를 기억으로 만들어내지는 않습니다.
 
 프로젝트별 커밋 본문에서 `검증`, `다음 작업`은 자주 쓰는 선택 섹션일 뿐 닫힌 목록이 아닙니다.  
 선택 섹션은 커밋 성격이나 사용자 명시 지시에 따라 제거, 추가, 이름 변경될 수 있습니다.
@@ -267,7 +272,7 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 ## 현재 안전 경계
 
 - 대상 프로젝트 원본은 이 저장소에서 수정하지 않습니다.
-- `Projects/<name>/baseline`은 읽기전용 기준이고, 코드 수정은 `edit/{Claud,Codex}`에서만 합니다.
+- `Projects/<name>/baseline`은 정식 CrossReview 여부와 무관하게 에이전트가 원본 대신 우선 참조하는 읽기전용 사본입니다. `sync.ps1` 실행 시점의 로컬 원본 파일을 복사하므로 미커밋 로컬 내용도 포함될 수 있고, 마커의 커밋 SHA는 출처 보조 정보이지 사본 내용의 유일한 정의가 아닙니다. 현재 HEAD·상태·최신성은 live Git에서 확인하고, 정식 리뷰가 시작되면 선택한 baseline 스냅숏 마커를 그 검토 동안 고정합니다. 코드 수정은 `edit/{Claud,Codex}`에서만 합니다.
 - 현재 결론은 단일 파일(REVIEW.md/DECISION.md), 변경 이력은 상태 저장소의 git이 보존합니다.
 - 실제 검토 인스턴스는 공개 저장소가 아니라 사용자 상태 저장소에 둡니다. `run-review.ps1`은 기본적으로 공개 저장소에 커밋하지 않으며, 상태 저장소/워크트리에서만 `-CommitToCurrentRepo`로 커밋을 명시합니다.
 - 각 에이전트는 자기 폴더에만 씁니다(상대 폴더 읽기 전용). 최종 코드 적용·커밋·푸시는 사용자만, `DECISION.md` 기준.

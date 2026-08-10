@@ -39,9 +39,8 @@ if (-not $entries -or $entries.Count -eq 0) {
 function Get-SourceSha([string] $repo) {
     # 반환: @{ Sha = '<short-sha>'; Error = '<사유>' }
     #
-    # 실패를 조용히 삼키지 않는다. 예전 구현은 빈 catch 로 모든 실패를 받아 'unknown' 을
-    # 돌려줬고, 그래서 baseline 마커가 commit=unknown 인 채로 성공 처리됐다.
-    # git 이 정확한 사유를 stderr 로 알려주고 있었는데 그것을 버린 것이 문제였다.
+    # 실패를 조용히 삼키지 않는다. commit SHA는 baseline 내용을 정의하지는 않지만
+    # 출처 추적에 유용하다. 예전 구현은 빈 catch 로 실패 사유까지 버렸다.
     #
     # git 은 저장소 폴더를 소유한 Windows SID 와 실행 프로세스의 SID 가 다르면
     # dubious ownership 으로 거부한다. 이 경로는 projects.json 이 지정한 것이므로
@@ -70,6 +69,26 @@ function Get-SourceSha([string] $repo) {
     }
     if (-not $text) { $text = "git rev-parse 가 종료 코드 $code 로 실패했습니다." }
     return @{ Sha = ''; Error = $text }
+}
+
+function Get-SourceWorktreeState([string] $repo) {
+    $safeRepo = $repo.Replace('\', '/')
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = @(& git -c "safe.directory=$safeRepo" -C $repo status --porcelain 2>$null)
+        $code = $LASTEXITCODE
+    }
+    catch {
+        return 'unknown'
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+
+    if ($code -ne 0) { return 'unknown' }
+    if ($output.Count -eq 0) { return 'clean' }
+    return 'dirty'
 }
 
 function Seed-Edit([string] $baseline, [string] $editPath, [bool] $force) {
@@ -142,28 +161,29 @@ function Sync-Project($entry) {
         return $false
     }
 
-    # baseline 마커: 기준 커밋 SHA + Source 파일 수 + 시점. run-review 가 Baseline 으로 인용.
+    # baseline 마커: 로컬 파일 복사 시점 + 출처 보조 SHA/working-tree 상태 + Source 파일 수.
+    # baseline 내용은 commit checkout 이 아니라 현재 로컬 파일에서 오므로 SHA만으로 정의되지 않는다.
     $shaInfo = Get-SourceSha $srcRepoRoot
     $sha     = if ($shaInfo.Sha) { $shaInfo.Sha } else { 'unknown' }
+    $worktreeState = Get-SourceWorktreeState $srcRepoRoot
     $srcCnt  = (Get-ChildItem "$dstEngine\Source" -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
     $stamp   = Get-Date -Format 'yyyy-MM-ddTHH:mm'
-    "$stamp sync | commit=$sha Source=$srcCnt" | Set-Content -Path (Join-Path $baseline '.baseline') -Encoding utf8
+    "$stamp sync | snapshot=local-worktree commit=$sha worktree=$worktreeState Source=$srcCnt" | Set-Content -Path (Join-Path $baseline '.baseline') -Encoding utf8
 
     # 편집 사본 시드 (없을 때만; -ResetEdit 으로 강제)
     $sClaud = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Claud") ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
     $sCodex = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Codex") ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
 
     if (-not $shaInfo.Sha) {
-        # 파일 미러는 갱신됐다. 다만 어느 커밋인지 증명할 수 없는 baseline 은 검토 기준이 못 된다.
-        # 조용히 성공 처리하면 마커만 최신인 상태를 아무도 알아채지 못한다.
-        Write-Warning "[$name] 파일 미러는 갱신했지만 기준 커밋 SHA 를 읽지 못했습니다."
+        # 파일 미러 자체는 로컬 원본에서 정상 생성됐다. SHA는 출처 보조 정보이므로
+        # 읽기 실패를 숨기지는 않되 baseline 생성 실패로 취급하지 않는다.
+        Write-Warning "[$name] 파일 미러는 갱신했지만 출처 커밋 SHA 를 읽지 못했습니다."
         Write-Warning "[$name]   사유: $($shaInfo.Error)"
-        Write-Warning "[$name]   마커에 commit=unknown 이 기록되었습니다. 이 baseline 은 리뷰 기준으로 인용할 수 없습니다."
+        Write-Warning "[$name]   마커에 commit=unknown 이 기록되었습니다. baseline 내용은 사용할 수 있지만 출처 커밋은 확인할 수 없습니다."
         Write-Warning "[$name]   실행 사용자와 저장소 폴더 소유자가 다르면 git 이 dubious ownership 으로 거부합니다."
-        return $false
     }
 
-    Write-Host "[$name] OK  commit=$sha  Source=$srcCnt  edit/Claud=$sClaud  edit/Codex=$sCodex" -ForegroundColor Green
+    Write-Host "[$name] OK  snapshot=local-worktree  commit=$sha  worktree=$worktreeState  Source=$srcCnt  edit/Claud=$sClaud  edit/Codex=$sCodex" -ForegroundColor Green
     return $true
 }
 

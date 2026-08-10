@@ -1,10 +1,10 @@
 # <ProjectName> - Project Rules Template
 
-Copy this file to `Projects/<name>/RULES.md` when registering a new target project in `Projects/projects.json`.
+Copy this file to `Projects/<name>/RULES.md` only when the user wants project-specific rules for a registered target.
 `Projects/<name>/` is ignored by git, so project-private rules stay local and do not enter the public workbench repository.
 
 `Reviews/run-review.ps1` injects the active project's `Projects/<name>/RULES.md` together with `Common/SHARED_RULES.md` into headless review prompts.
-For a registered project, the script stops if this file is missing.
+The file itself is optional. When it exists, applying it to that project is mandatory. When it does not exist, reviews continue with shared workbench rules and record that no project-specific rule file was loaded.
 
 ---
 
@@ -51,4 +51,4 @@ For a registered project, the script stops if this file is missing.
 ## 5. Routing Requirement
 
 - Define which tasks must load this project rule before drafting output.
-- At minimum, commit-message and DevLog drafting should fail closed when project-specific format is missing.
+- Once this file exists, commit-message and DevLog drafting for this project must load it.

@@ -3,26 +3,31 @@
 This file contains generic MultiAgentCrossReview rules only.
 Do not put project-specific code style, architecture, DevLog paths, commit-title conventions, or personal user settings here.
 
+Every agent operating inside this workbench must read and apply this file. `Common/ROUTING.md` is the mandatory lightweight entry surface; this file is the mandatory shared rulebook.
+
 Rule layers:
 
-- Workbench rules: this file, plus `../Reviews/README.md`.
-- Project rules: `../Projects/<active>/RULES.md` when an active project exists.
-- User settings: private files under `../UserSettings/` when present.
-- Agent role notes: `../Claud/ROLE.md` and `../Codex/ROLE.md` add reviewer emphasis only. They do not redefine shared process rules.
+- Workbench rules: this file always.
+- User preferences: optional `../UserSettings/preferences.md`. When present, its application is mandatory. Other private `UserSettings/` files are loaded only for the task they serve.
+- Project rules: optional `../Projects/<active>/RULES.md`. When present, they are mandatory for that project only.
+- Formal review rules: `../Reviews/README.md` only while operating a formal `Reviews/<review-id>/` CrossReview.
+- Agent role notes: `../Claud/ROLE.md` and `../Codex/ROLE.md` add reviewer emphasis only. They do not redefine shared process rules. The supported built-in reviewer pair is Claude and Codex.
 
 Priority:
 
-1. Workbench rules and user settings.
-2. Project-specific rules.
-3. Prior chat, memory, local habit, or non-SSOT notes.
+1. Platform safety, source protection, permission boundaries, and the user's current explicit scope or authorization.
+2. Other workbench rules in this file.
+3. Local user settings when present.
+4. Active project rules when present.
+5. Prior chat, memory, local habit, or non-SSOT notes.
 
 If these layers conflict, the earlier layer wins. Project rules must run inside the workbench and user-setting boundaries.
 
 Read-before-write gates:
 
-- Before drafting a project commit message, read the active `../Projects/<active>/RULES.md` first, then this file for the generic body structure.
-- Before drafting or editing a project DevLog, read the active `../Projects/<active>/RULES.md` first.
-- If the active project rule file is missing, do not draft project commit or DevLog text from memory. Report the missing rule file first.
+- Before drafting a project commit message or DevLog, read the active `../Projects/<active>/RULES.md` when it exists.
+- If no project rule file exists, continue with this file. A generic commit-message draft may use the shared body structure.
+- Without a project rule file, do not invent project-specific title formats, DevLog paths, encodings, templates, or conventions. Editing a DevLog file still requires an explicit or discoverable target and format.
 
 ## 1. Core Workbench Invariants
 
@@ -30,7 +35,10 @@ Read-before-write gates:
 - Treat every source repository registered in `../Projects/projects.json` as protected and read-only by default. Resolve write targets before acting; do not create, modify, delete, build in, commit, or push a protected source unless the user's current request explicitly authorizes that exact operation and target repository.
 - Authorization for this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory never implies authorization for the protected source repository.
 - Use the live source repository for current branch, HEAD, working-tree state, and document freshness. Verify drift-prone claims from live Git and inspect a cited document's last change before presenting it as current.
-- `Projects/<name>/baseline/` is an immutable snapshot for a formal review. Freeze and record its commit when the review starts; do not silently substitute it for live state or refresh it during that review.
+- `Projects/<name>/baseline/` is the default read-only reference copy for code and project documents, including outside formal CrossReview. It exists to reduce direct interaction with the protected source repository.
+- A baseline is a snapshot of the source repository's local files at sync time, not a checkout defined solely by a commit. It may include local uncommitted content. Its marker records capture time and available source metadata; a commit SHA is useful provenance but does not fully define the copied contents.
+- Use live Git for current branch, HEAD, working-tree state, and freshness checks. Read the protected source tree directly only when the baseline cannot answer the question or a live difference must be verified.
+- When a formal review starts, freeze and record the selected baseline snapshot marker. Do not refresh or substitute that snapshot during the review without an explicit new-baseline decision.
 - Project rule files contain stable instructions, boundaries, and pointers. Do not copy volatile state into them, including current commit hashes, test totals, measurements, latest log names, or remaining-work lists.
 - Preserve measurement scope, unit, configuration, and aggregation labels when citing results. If a copied value has lost its label, return to the cited project evidence instead of guessing.
 - Treat agent memory and prior chat as potentially machine-local and stale unless an explicit transport contract says otherwise. They are retrieval aids, not authority for rules, design decisions, or current project state.

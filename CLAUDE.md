@@ -1,8 +1,9 @@
 # CLAUDE.md - MultiAgentCrossReview
 
-Entry point for Claude Code. Keep this file small. It imports only the routing surface; detailed rules are loaded by route.
+Entry point for Claude Code. Keep this file small. It imports the mandatory workbench layers; conditional layers are loaded by route.
 
 @Common/ROUTING.md
+@Common/SHARED_RULES.md
 
 Session start gate:
 
@@ -20,13 +21,13 @@ Non-negotiable source guard:
 - Workbench process rules: `Common/SHARED_RULES.md`
 - Review state and record format: `Reviews/README.md`
 - Active project rules: `Projects/<active>/RULES.md` if present; template: `Common/PROJECT_RULES.template.md`
-- Local user settings: always load `UserSettings/` private files first if present; guide: `UserSettings/README.md`
+- Local preferences: always load `UserSettings/preferences.md` if present; load other `UserSettings/` files only when the current task routes to them; guide: `UserSettings/README.md`
 - Claude role notes: `Claud/ROLE.md`
 - Codex role reference: `Codex/ROLE.md`
 - Project overview: `README.md`
 
 Read-before-write gates:
 
-- Before drafting a project commit message, read the active `Projects/<active>/RULES.md` first, then `Common/SHARED_RULES.md`.
-- Before drafting or editing a project DevLog, read the active `Projects/<active>/RULES.md` first.
-- If the active project rule file is missing, do not draft the commit message or DevLog from memory. Report the missing rule file first.
+- If the active project's `Projects/<active>/RULES.md` exists, read it before drafting a project commit message or DevLog and apply it only to that project.
+- If no project rule file exists, continue with `Common/SHARED_RULES.md`; do not invent project-specific title formats, paths, encodings, templates, or conventions.
+- A generic commit-message draft may use the shared body structure. A DevLog file edit still requires an explicit or discoverable target path and format.

@@ -4,7 +4,7 @@
 > 상세 판단은 `Claud/REVIEW.md` · `Codex/REVIEW.md`, 최종은 `DECISION.md`.
 
 - 주제:
-- 기준 커밋(baseline): &lt;`Projects/<name>/baseline/.baseline` 의 commit=…&gt;
+- baseline 스냅숏: &lt;`Projects/<name>/baseline/.baseline` 마커 전문&gt;
 - 범위:
 - 제외:
 - 상태: Open | In-Review | Decided

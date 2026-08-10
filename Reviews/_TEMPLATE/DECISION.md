@@ -1,7 +1,7 @@
 ---
 Review-ID: <id>
 Author: User
-Baseline: <commit=...>
+Baseline: <snapshot marker>   # 검토 시작 시 고정한 Projects/<name>/baseline/.baseline 마커 전문
 Status: Pending        # Pending -> Decided. 단일 가변 파일 — 덮어쓰고 커밋(이력=git). Decision 파일을 쌓지 않는다.
 ---
 

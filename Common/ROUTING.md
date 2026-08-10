@@ -3,17 +3,20 @@
 This file is the small always-on routing surface.
 It is intentionally shorter than the detailed rule files.
 
+Every agent operating inside this workbench must load this file and `Common/SHARED_RULES.md` before responding or taking task action. Routing decides which additional conditional layers apply; it does not make the shared rules optional.
+
 ## Always-On Invariants
 
-- Workbench rules and user settings outrank project-specific rules.
-- Project rules are plugins. They apply only inside the workbench and user-preference boundaries.
-- Always load local user settings from `UserSettings/` private files when present. Do not gate this layer behind tone/style keywords.
+- Source protection, permission boundaries, and other non-negotiable workbench invariants outrank user preferences and project-specific rules.
+- Project rules are optional plugins. When present, they are mandatory for their active project and apply only inside the workbench and user-preference boundaries.
+- Always load `UserSettings/preferences.md` when it is present. Its existence is optional, but its application is mandatory. Load other private `UserSettings/` files only when the current task routes to their purpose; do not treat handoff notes, machine notes, or patch records as always-on preferences.
 - Registered source repositories (`Projects/projects.json` → `sourceRepoRoot`) are read-only by default. Resolve the write target before acting. Permission for this workbench, a baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory never transfers to them.
+- Use `Projects/<name>/baseline/` as the default read-only code and document reference surface when it is available. It is copied from the source repository's local files at sync time and may therefore include uncommitted local content. Use live Git for current HEAD, status, and freshness checks; treat a recorded commit as source metadata, not as the definition of the baseline contents. Inspect the protected source tree directly only when the baseline cannot answer the question or a live difference must be verified.
 - Current state comes from live Git and current project documents — never from a rule file, a mirror, or memory. Check a document's last change before quoting it as current.
 - Agent memory and prior chat are machine-local retrieval aids. They are not authority for rules, decisions, or current project state.
 - Keep public review/process artifacts separate from private raw sessions, local credentials, local user settings, and ignored project mirrors.
-- When a task depends on rules, inspect the relevant rule file before giving a final answer or drafting an artifact.
-- If routing is uncertain, read less but read the right anchor: `Common/SHARED_RULES.md` for workbench behavior, `Projects/<active>/RULES.md` for project behavior, and `UserSettings/` private files for local user settings when present.
+- Always apply `Common/SHARED_RULES.md`. When a task has an active project, also load that project's `Projects/<name>/RULES.md` if it exists.
+- If project routing is uncertain, do not select the first registered project by habit. Resolve the project from the user's request and touched paths; if none is active, use shared rules only.
 
 ## Primary Routing Anchors
 
@@ -22,10 +25,11 @@ Use context anchors before lexical keyword matching.
 | Context anchor | Read |
 |---|---|
 | Task is about MultiAgentCrossReview itself, review process, public/private boundaries, `Reviews/`, `run-review.ps1`, or `sync.ps1` | `Common/SHARED_RULES.md`, then `Reviews/README.md` when record/state flow matters |
-| Task mentions or touches a registered project from `Projects/projects.json` | `Projects/<name>/RULES.md` if present |
-| Task touches `Projects/<name>/baseline/` or `Projects/<name>/edit/` | `Projects/<name>/RULES.md` and `Common/SHARED_RULES.md` |
-| Task asks for commit messages, DevLog, code style, architecture, build/test interpretation, or project-specific conventions | Active project `RULES.md` first, then `Common/SHARED_RULES.md` for generic structure |
-| Task is about tone, collaboration style, no-yes-man behavior, private/local preferences, or user-specific workflow | `UserSettings/` private files for details; this layer should already be loaded when present |
+| Task mentions or touches a registered project from `Projects/projects.json` | `Projects/<name>/RULES.md` if present; otherwise keep using shared rules only |
+| Task touches `Projects/<name>/baseline/` or `Projects/<name>/edit/` | Always `Common/SHARED_RULES.md`, plus `Projects/<name>/RULES.md` if present |
+| Task asks for commit messages, DevLog, code style, architecture, build/test interpretation, or project-specific conventions | Shared rules always; active project `RULES.md` additionally when present |
+| Task is about tone, collaboration style, no-yes-man behavior, or stable local preferences | `UserSettings/preferences.md`; this file should already be loaded when present |
+| Task is about handoff state, machine notes, local registries, or pending patches | The matching `UserSettings/` file only; these files are task-routed, not always-on |
 | Task is about raw session movement or cross-device continuation | Treat as private transport work; use the relevant AgentSessionSync/vault documents, not public review docs |
 
 ## Secondary Keyword Triggers
@@ -42,9 +46,9 @@ If context already identifies the active project, load that project rule file ev
 ## Loading Strategy
 
 - Always keep this routing file and the invariants small.
-- Do not eagerly load every detailed rule file.
-- Always load local user settings when present. They are a base layer, not a keyword-gated layer.
-- Load project rules only when the active project or touched paths make them relevant.
-- For commit-message or DevLog drafting, the active project rule file is mandatory when a registered project is active. Do not draft from memory when that file is missing; report the missing rule and ask for or create the project rule first.
+- Always load `Common/SHARED_RULES.md`; do not eagerly load unrelated project or formal-review files.
+- Always load `UserSettings/preferences.md` when present. It is a base layer, not a keyword-gated layer; other `UserSettings/` files remain task-routed.
+- Load a project rule file only when the active project or touched paths make it relevant. Its existence is optional, but application is mandatory when it exists.
+- Without a project rule file, generic commit-message drafting may use the shared body structure. Do not invent project-specific title formats, DevLog paths, encodings, templates, or conventions.
 - Headless review orchestration may inject rules directly in prompts; in that path, the script routing is authoritative.
-- Registered-project reviews, interactive commit-message drafting, and DevLog drafting are fail-closed when the active project rule file is missing.
+- Formal registered-project reviews require a verified baseline, but they do not require a project rule file. Missing optional project rules are recorded and the review continues with shared rules.

@@ -23,7 +23,10 @@ UserSettings/machines/<name>.md   # machine-specific notes
 
 `preferences.md` is the default always-on private user layer. If it exists, agents
 should load it before project-specific rules. Do not gate it behind tone/style
-keywords.
+keywords. Its existence is optional, and it cannot weaken platform safety, source
+protection, permission boundaries, or other non-negotiable workbench invariants.
+Other files in this directory are not always-on rule inputs. Load handoff notes,
+machine notes, registries, and pending patches only when the current task needs them.
 
 ## Sync tool registry
 
