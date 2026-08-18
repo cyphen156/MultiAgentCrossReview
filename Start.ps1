@@ -27,7 +27,11 @@ function New-Result([string] $Package, [string] $Action, [string] $Result, [stri
 # external optional sync adapter and runs here. Packages/ProjectSync/ is a built-in
 # one-way mirror that exposes Sync.ps1 (not Start.ps1), so this folder scan skips it
 # ('no Start.ps1') and it is intentionally not part of this button.
-$packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)
+# AgentSessionSync opens the registered agent apps. Run it only after every other
+# Start adapter has finished so agents never observe workbench state changing
+# underneath an already-started session.
+$packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue |
+    Sort-Object @{ Expression = { if ($_.Name -eq 'AgentSessionSync') { 1 } else { 0 } } }, Name)
 
 Write-Host 'Workbench Start' -ForegroundColor Cyan
 Write-Host "  packages: $PackagesRoot"

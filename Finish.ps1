@@ -30,7 +30,11 @@ function New-Result([string] $Package, [string] $Action, [string] $Result, [stri
 # external optional sync adapter and runs here. Packages/ProjectSync/ is a built-in
 # one-way mirror that exposes Sync.ps1 (not Finish.ps1), so this folder scan skips it
 # ('no Finish.ps1') and it is intentionally not part of this button.
-$packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue | Sort-Object Name)
+# AgentSessionSync closes the registered agent apps before it snapshots sessions.
+# Keep it last so every other Finish adapter can complete while the agents that
+# initiated the integrated Finish are still available.
+$packages = @(Get-ChildItem -LiteralPath $PackagesRoot -Directory -ErrorAction SilentlyContinue |
+    Sort-Object @{ Expression = { if ($_.Name -eq 'AgentSessionSync') { 1 } else { 0 } } }, Name)
 
 Write-Host 'Workbench Finish' -ForegroundColor Cyan
 Write-Host "  packages: $PackagesRoot"
