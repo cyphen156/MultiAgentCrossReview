@@ -25,7 +25,6 @@ Routing:
 - General routing and trigger table: `Common/ROUTING.md`
 - Workbench process rules: `Common/SHARED_RULES.md`
 - What a baseline contains (mirror spec format): `Common/MIRROR_SPEC.md`
-- Shared tooling propagation between workbenches: `Common/PACKAGE_PROPAGATION.md`
 - Review state and record format: `Reviews/README.md`
 - Active project rules: `Projects/<active>/RULES.md` if present; template: `Common/PROJECT_RULES.template.md`
 - Local preferences: always load `UserSettings/preferences.md` if present; load other `UserSettings/` files only when the current task routes to them; guide: `UserSettings/README.md`

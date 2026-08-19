@@ -50,10 +50,10 @@ The file itself is optional. When it exists, applying it to that project is mand
 
 ## 5. Mirror Scope
 
-- Mirror spec file: `Projects/<name>/mirror.json` (format: `Common/MIRROR_SPEC.md`).
+- Mirror spec file: `Projects/<name>/MirrorTargets.json` (format: `Common/MIRROR_SPEC.md`).
 - Note here what the baseline deliberately **omits**, so agents do not read absence from the baseline as absence from the source.
 - Do not restate the spec contents here. The spec file is the SSOT; this section only points at it and records intent.
-- If this project has no `mirror.json`, `sync.ps1` applies its built-in default preset (C++/Visual Studio). Say so explicitly if that is intended.
+- If this project has no `MirrorTargets.json`, `Packages/ProjectSync/Sync.ps1` applies its built-in default preset (C++/Visual Studio). Say so explicitly if that is intended.
 
 ## 6. Routing Requirement
 

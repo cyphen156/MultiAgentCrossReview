@@ -81,28 +81,28 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 
 ```powershell
 # 1) 대상 프로젝트 등록 (Projects/projects.example.json -> Projects/projects.json 로 복사 후 로컬 경로 수정)
-#    { "projects": [ { "name": "ExampleProject", "sourceRepoRoot": "C:\\Path\\To\\ExampleProject", "engineSubdir": "ExampleProject" } ] }
+#    { "projects": [ { "name": "ExampleProject", "sourceRepoRoot": "C:\\Path\\To\\ExampleProject" } ] }
 
-# 2) 무엇을 미러할지 선언 (선택) — Projects/<name>/mirror.json, 형식은 Common/MIRROR_SPEC.md
-#    없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다. 미러 규칙은 sync.ps1 을
+# 2) 무엇을 미러할지 선언 (선택) — Projects/<name>/MirrorTargets.json, 형식은 Common/MIRROR_SPEC.md
+#    없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다. 미러 규칙은 도구를
 #    고치는 것이 아니라 이 스펙 파일로 바꿉니다.
 
 # 3) 등록 프로젝트 동기화 — baseline 채우고 edit/Claud·edit/Codex 시드
-.\sync.ps1                        # 매니페스트 전체
-.\sync.ps1 -Project ExampleProject # 특정 프로젝트
-.\sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
+.\Packages\ProjectSync\Sync.ps1                        # 매니페스트 전체
+.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject # 특정 프로젝트
+.\Packages\ProjectSync\Sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
 
 # 4) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 등록
 .\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
 # 사용할 Vault를 UserSettings\sync-tools.json(로컬, gitignore)에 등록. 상태 저장소 VaultRoot는 그 Vault 쪽 config에서 설정
 .\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize
 
-# 4) 새 검토 주제 생성 + 진행
+# 5) 새 검토 주제 생성 + 진행
 Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
 .\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Status   # 현재 상태
 .\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Steps 8  # 끝까지
 
-# 5) 선택: 작업한 상태를 상태 저장소로 되돌려 보내기
+# 6) 선택: 작업한 상태를 상태 저장소로 되돌려 보내기
 .\Packages\WorkbenchStateSync\Finish.ps1  # 워크트리 상태 -> 상태 저장소 commit/push
 ```
 
@@ -145,7 +145,7 @@ Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (�
 Launchers/                  통합/수동 실행용 Windows 런처와 작업표시줄용 .lnk 생성기
 Packages/WorkbenchStateSync/  상태 sync 도구 호출 어댑터 (ToolRoot=실사용 MultiAgentWorkbenchStateVault)
 Packages/AgentSessionSync/    세션 sync 도구 호출 어댑터 (ToolRoot=실사용 AgentSessionVault)
-Packages/ProjectSync/       내장·필수 프로젝트 미러 (Sync 명령, sync.ps1 감쌈, Start/Finish 배치 제외)
+Packages/ProjectSync/       내장·필수 프로젝트 미러 (Sync 명령, Start/Finish 배치 제외)
 Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
@@ -165,8 +165,6 @@ Reviews/                    검토 프레임워크 (공개)
     Claud/REVIEW.md + artifacts/
     Codex/REVIEW.md + artifacts/
     DECISION.md             사용자 최종 판정
-
-sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync가 감쌈)
 ```
 
 `Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외합니다.  
@@ -258,7 +256,7 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 
 ## ProjectSync 패키지
 
-`Packages/ProjectSync/`는 기존 `sync.ps1`를 버튼화한 **내장·필수 단방향 미러**입니다.
+`Packages/ProjectSync/`는 **내장·필수 단방향 미러**입니다. 도구 본체가 이 패키지 안에 있습니다.
 
 ```powershell
 .\Packages\ProjectSync\Sync.ps1
@@ -276,7 +274,7 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 ## 현재 안전 경계
 
 - 대상 프로젝트 원본은 이 저장소에서 수정하지 않습니다.
-- `Projects/<name>/baseline`은 정식 CrossReview 여부와 무관하게 에이전트가 원본 대신 우선 참조하는 읽기전용 사본입니다. `sync.ps1` 실행 시점의 로컬 원본 파일을 복사하므로 미커밋 로컬 내용도 포함될 수 있고, 마커의 커밋 SHA는 출처 보조 정보이지 사본 내용의 유일한 정의가 아닙니다. 현재 HEAD·상태·최신성은 live Git에서 확인하고, 정식 리뷰가 시작되면 선택한 baseline 스냅숏 마커를 그 검토 동안 고정합니다. 코드 수정은 `edit/{Claud,Codex}`에서만 합니다.
+- `Projects/<name>/baseline`은 정식 CrossReview 여부와 무관하게 에이전트가 원본 대신 우선 참조하는 읽기전용 사본입니다. `Packages/ProjectSync/Sync.ps1` 실행 시점의 로컬 원본 파일을 복사하므로 미커밋 로컬 내용도 포함될 수 있고, 마커의 커밋 SHA는 출처 보조 정보이지 사본 내용의 유일한 정의가 아닙니다. 현재 HEAD·상태·최신성은 live Git에서 확인하고, 정식 리뷰가 시작되면 선택한 baseline 스냅숏 마커를 그 검토 동안 고정합니다. 코드 수정은 `edit/{Claud,Codex}`에서만 합니다.
 - 현재 결론은 단일 파일(REVIEW.md/DECISION.md), 변경 이력은 상태 저장소의 git이 보존합니다.
 - 실제 검토 인스턴스는 공개 저장소가 아니라 사용자 상태 저장소에 둡니다. `run-review.ps1`은 기본적으로 공개 저장소에 커밋하지 않으며, 상태 저장소/워크트리에서만 `-CommitToCurrentRepo`로 커밋을 명시합니다.
 - 각 에이전트는 자기 폴더에만 씁니다(상대 폴더 읽기 전용). 최종 코드 적용·커밋·푸시는 사용자만, `DECISION.md` 기준.
@@ -284,7 +282,7 @@ sync.ps1                    projects.json 구동 미러 동기화 (ProjectSync�
 
 ## 참고
 
-- 워크벤치 PowerShell 스크립트(`Start.ps1`, `Finish.ps1`, `sync.ps1`, `Reviews/run-review.ps1`, `Packages/*/*.ps1`)는 Windows PowerShell 5.1의 한글 파싱을 위해 **UTF-8 BOM**으로 저장합니다 — 벗기지 마세요. (no-BOM은 대상 엔진 소스/DevLog의 규칙이지 워크벤치 툴링 규칙이 아닙니다.)
+- **비ASCII(한글 등)를 포함하는 워크벤치 PowerShell 스크립트는 UTF-8 BOM으로 저장합니다 — 벗기지 마세요.** PowerShell 5.1은 BOM이 없으면 한글 리터럴을 잘못 디코드하고, 운이 나쁘면 문자열 종료자를 잃어 파스 에러로 죽습니다. 순수 ASCII 스크립트는 BOM이 없어도 무방합니다. (no-BOM은 대상 엔진 소스/DevLog의 규칙이지 워크벤치 툴링 규칙이 아닙니다.)
 - 2026-06-28 이전 검토 주제는 옛 번호파일 레이아웃(레거시)으로 그대로 보존합니다.
 
 ## 라이선스

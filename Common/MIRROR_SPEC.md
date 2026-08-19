@@ -1,26 +1,32 @@
-# Mirror Spec - `Projects/<name>/mirror.json`
+# Mirror Spec - `Projects/<name>/MirrorTargets.json`
 
-이 문서는 `sync.ps1` 이 읽는 **프로젝트별 미러 스펙**의 형식을 정의합니다.
+이 문서는 `Packages/ProjectSync/Sync.ps1` 이 읽는 **프로젝트별 미러 스펙**의 형식을 정의합니다.
 
 ## 왜 데이터인가
 
 "무엇을 baseline 으로 복사할 것인가"는 머신의 성질이 아니라 **프로젝트의 성질**입니다.
-예전에는 이 규칙이 `sync.ps1` 코드 안에 하드코딩돼 있어서, 다른 성질의 프로젝트를
+예전에는 이 규칙이 `Packages/ProjectSync/Sync.ps1` 코드 안에 하드코딩돼 있어서, 다른 성질의 프로젝트를
 등록하려면 스크립트를 통째로 복제하는 수밖에 없었습니다. 복제본은 서로 동기화되지 않아
 같은 워크벤치의 머신 사이에서도 구성이 어긋났습니다.
 
-스펙을 데이터로 빼면 `sync.ps1` 은 한 벌만 존재하고, 프로젝트 성질의 차이는 스펙 파일이
+스펙을 데이터로 빼면 `Packages/ProjectSync/Sync.ps1` 은 한 벌만 존재하고, 프로젝트 성질의 차이는 스펙 파일이
 흡수합니다.
 
 ## 위치와 운반
 
-- 경로: `Projects/<name>/mirror.json`
+- 경로: `Projects/<name>/MirrorTargets.json`
+- **적히는 경로는 전부 원본 루트 기준 상대경로입니다.** 절대경로를 적을 수 없습니다.
 - `Projects/*/` 는 `.gitignore` 대상이므로 공개 저장소에 들어가지 않습니다.
 - 대신 **WorkbenchStateSync 가 운반**합니다. `RULES.md` 와 같은 취급입니다.
-- 따라서 스펙은 머신 사이에서 자동으로 일치합니다. `projects.json` 은 머신 로컬 경로
-  등록부이므로 스펙을 담지 않습니다.
+- 따라서 스펙은 머신 사이에서 자동으로 일치합니다.
+- `projects.json` 은 반대입니다. `sourceRepoRoot` 가 절대경로라 머신마다 다르므로
+  (랩탑 `D:`, 데스크탑 `F:`) **운반하지 않고 각 머신에서 직접 설정**합니다. 거기에는
+  `name` 과 `sourceRepoRoot` 만 둡니다.
+- 이 분리가 안전장치입니다. 쓸 위치를 정하는 절대경로가 운반되면, 틀린 머신에서 풀렸을 때
+  `robocopy /MIR` 이 엉뚱한 실제 디렉터리를 대상으로 잡고 그 안을 지웁니다. 상대경로만
+  운반하면 어디서 풀려도 자기 프로젝트 밖을 가리키지 못합니다.
 
-`Projects/<name>/mirror.json` 이 **없으면** `sync.ps1` 은 내장 기본 프리셋
+`Projects/<name>/MirrorTargets.json` 이 **없으면** `Packages/ProjectSync/Sync.ps1` 은 내장 기본 프리셋
 (`cpp-vs`, 아래 참조)을 사용합니다. 기존 C++/Visual Studio 구성은 이 프리셋으로 보존되므로,
 스펙 파일을 만들지 않아도 동작은 이전과 같습니다.
 
@@ -30,6 +36,7 @@
 {
   "version": 1,
   "description": "사람이 읽는 설명. 동작에 영향 없음.",
+  "engineSubdir": "EngineFolderName",
   "sourceCountPath": "${engineSubdir}/Source",
   "items": [
     {
@@ -54,6 +61,7 @@
 |---|---|---|
 | `version` | 예 | 스펙 버전. 현재 `1` 만 지원. 모르는 값이면 실패합니다. |
 | `description` | 아니오 | 주석용. 동작에 영향 없음. |
+| `engineSubdir` | 아니오 | 원본 루트 밑의 주 서브디렉터리 이름. `${engineSubdir}` 치환자로 쓰입니다. 비우면 원본 루트가 곧 기준입니다. |
 | `items` | 예 | 복사 항목 배열. 비어 있으면 실패합니다. |
 | `sourceCountPath` | 아니오 | `.baseline` 마커의 `Source=N` 을 셀 baseline 상대 경로. 생략하면 첫 `required` tree, 그것도 없으면 첫 tree 를 씁니다. |
 
@@ -72,7 +80,7 @@
 
 `from` / `to` / `sourceCountPath` 에서 다음이 치환됩니다.
 
-- `${engineSubdir}` — `projects.json` 의 `engineSubdir` (없으면 `name`)
+- `${engineSubdir}` — 이 파일의 `engineSubdir` (비어 있으면 원본 루트가 기준)
 - `${name}` — `projects.json` 의 `name`
 
 ### 경계 규칙
@@ -115,12 +123,13 @@
 
 ## 내장 기본 프리셋 `cpp-vs`
 
-`mirror.json` 이 없을 때 적용되는 값입니다. 이전 하드코딩 동작과 동일합니다.
+`MirrorTargets.json` 이 없을 때 적용되는 값입니다. 이전 하드코딩 동작과 동일합니다.
 
 ```json
 {
   "version": 1,
   "description": "built-in default: C++ / Visual Studio engine repository",
+  "engineSubdir": "",
   "sourceCountPath": "${engineSubdir}/Source",
   "items": [
     { "kind": "tree", "from": "${engineSubdir}/Source", "required": true,

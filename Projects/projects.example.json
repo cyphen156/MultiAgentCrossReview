@@ -2,8 +2,7 @@
   "projects": [
     {
       "name": "ExampleProject",
-      "sourceRepoRoot": "C:\\Path\\To\\ExampleProject",
-      "engineSubdir": "ExampleProject"
+      "sourceRepoRoot": "C:\\Path\\To\\ExampleProject"
     }
   ]
-}
+}
