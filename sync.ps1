@@ -1,11 +1,16 @@
-﻿# 대상 프로젝트 참고 미러 재동기화 — 매니페스트 구동.
+﻿# 대상 프로젝트 참고 미러 재동기화 — 매니페스트 + 프로젝트별 미러 스펙 구동.
 #
 # Projects/projects.json 에 등록된 각 프로젝트를 읽어:
-#   - Projects/<name>/baseline      : 원본 소스/문서/리소스/프로젝트 파일 미러 (읽기전용 기준 사본)
+#   - Projects/<name>/baseline      : 원본 미러 (읽기전용 기준 사본)
 #   - Projects/<name>/edit/Claud     : ClaudeCode 전용 편집 사본 (없을 때만 시드)
 #   - Projects/<name>/edit/Codex     : Codex 전용 편집 사본 (없을 때만 시드)
-# git 이력 / IDE 설정 / 빌드 산출물은 미러 대상이 아니다.
 # Projects/<name>/** 는 .gitignore 로 커밋되지 않는다 (매니페스트 projects.json 만 추적).
+#
+# "무엇을 미러할 것인가"는 이 스크립트가 아니라 프로젝트별 데이터에 있다:
+#   - Projects/<name>/mirror.json    : 미러 스펙. 형식은 Common/MIRROR_SPEC.md
+#   - 없으면 내장 기본 프리셋(cpp-vs)을 쓴다. 예전 하드코딩 동작과 동일하다.
+# projects.json 은 머신 로컬 경로 등록부이므로 스펙을 담지 않는다. 스펙은
+# WorkbenchStateSync 가 RULES.md 와 함께 운반하므로 머신 사이에서 일치한다.
 #
 # 사용법:
 #   .\sync.ps1                        # 매니페스트 전체
@@ -91,16 +96,92 @@ function Get-SourceWorktreeState([string] $repo) {
     return 'dirty'
 }
 
-function Seed-Edit([string] $baseline, [string] $editPath, [bool] $force) {
-    if ($force -and (Test-Path $editPath)) {
+function Seed-Edit([string] $baseline, [string] $editRoot, [string] $agent, [bool] $force) {
+    # 편집 슬롯은 반드시 edit 루트 아래여야 한다. $agent 는 코드 상수지만, 경로 결합
+    # 결과를 확인하지 않으면 이 함수는 -Recurse -Force 삭제를 임의 경로에 수행할 수 있다.
+    # 삭제 직전에 경계를 확인한다.
+    $editRootFull = [IO.Path]::GetFullPath($editRoot).TrimEnd('\', '/')
+    $editPath     = [IO.Path]::GetFullPath((Join-Path $editRootFull $agent))
+    if (-not $editPath.StartsWith($editRootFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "편집 사본 경로가 edit 루트를 벗어났습니다: $editPath"
+    }
+
+    if ($force -and (Test-Path -LiteralPath $editPath)) {
         Remove-Item -LiteralPath $editPath -Recurse -Force
     }
-    if (-not (Test-Path $editPath)) {
+    if (-not (Test-Path -LiteralPath $editPath)) {
         New-Item -ItemType Directory -Path $editPath -Force | Out-Null
-        robocopy $baseline $editPath /MIR /XD ".vs" "x64" "Debug" "Release" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+        robocopy $baseline $editPath /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
+        if ($LASTEXITCODE -ge 8) {
+            throw "편집 사본 시드 실패: $baseline -> $editPath (robocopy=$LASTEXITCODE)"
+        }
         return 'seeded'
     }
     return 'kept'
+}
+
+# ===== 미러 스펙 =====
+
+function Get-DefaultMirrorSpec {
+    # 내장 기본 프리셋 'cpp-vs'. mirror.json 이 없을 때 쓰이며, 스펙 도입 이전의
+    # 하드코딩 동작과 동일하다. 형식 문서는 Common/MIRROR_SPEC.md.
+    return [pscustomobject]@{
+        version         = 1
+        description     = 'built-in default: C++ / Visual Studio engine repository'
+        sourceCountPath = '${engineSubdir}/Source'
+        items           = @(
+            [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/Source'; required = $true; excludeDirs = @('.vs', 'x64', 'Debug', 'Release') },
+            [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/DevLog' },
+            [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/Resources' },
+            [pscustomobject]@{ kind = 'file'; from = '${engineSubdir}/${engineSubdir}.vcxproj' },
+            [pscustomobject]@{ kind = 'file'; from = '${engineSubdir}/${engineSubdir}.sln' },
+            [pscustomobject]@{ kind = 'file'; from = '${engineSubdir}/CMakeLists.txt' },
+            [pscustomobject]@{ kind = 'file'; from = 'CyphenBuild.props' },
+            [pscustomobject]@{ kind = 'tree'; from = 'Docs' },
+            [pscustomobject]@{ kind = 'file'; from = 'README.md' },
+            [pscustomobject]@{ kind = 'tree'; from = 'Modules'; excludeDirs = @('.vs', 'x64', 'Debug', 'Release'); excludeFiles = @('*.vcxproj.user') }
+        )
+    }
+}
+
+function Get-MirrorSpec([string] $specPath, [string] $name) {
+    if (-not (Test-Path -LiteralPath $specPath)) {
+        Write-Host "[$name] mirror.json 없음 - 내장 기본 프리셋(cpp-vs) 사용" -ForegroundColor DarkGray
+        return Get-DefaultMirrorSpec
+    }
+
+    try {
+        $spec = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
+    catch {
+        throw "[$name] mirror.json 을 읽지 못했습니다: $specPath`n  $($_.Exception.Message)"
+    }
+
+    # 스펙이 깨졌을 때 조용히 기본값으로 되돌아가면, 선언한 범위와 실제 baseline 이
+    # 어긋난 채로 리뷰가 진행된다. 알 수 없는 스펙은 실패시킨다.
+    if ($null -eq $spec.version -or [int] $spec.version -ne 1) {
+        throw "[$name] 지원하지 않는 mirror.json version 입니다: '$($spec.version)' (지원: 1)"
+    }
+    $items = @($spec.items)
+    if ($items.Count -eq 0) {
+        throw "[$name] mirror.json 의 items 가 비어 있습니다: $specPath"
+    }
+    return $spec
+}
+
+function Expand-SpecPath([string] $path, [string] $name, [string] $engineSub) {
+    if (-not $path) { return '' }
+    return $path.Replace('${engineSubdir}', $engineSub).Replace('${name}', $name).Replace('/', '\')
+}
+
+function Resolve-UnderRoot([string] $root, [string] $relative, [string] $label) {
+    # '.' 를 루트 자신으로 허용하되, '..' 로 루트 밖을 가리키는 경로는 거부한다.
+    $rootFull = [IO.Path]::GetFullPath($root).TrimEnd('\', '/')
+    $full     = [IO.Path]::GetFullPath((Join-Path $rootFull $relative)).TrimEnd('\', '/')
+    if ($full -ne $rootFull -and -not $full.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "$label 경로가 루트를 벗어났습니다: '$relative' -> $full (루트: $rootFull)"
+    }
+    return $full
 }
 
 function Sync-Project($entry) {
@@ -108,71 +189,98 @@ function Sync-Project($entry) {
     $srcRepoRoot = $entry.sourceRepoRoot
     $engineSub   = if ($entry.PSObject.Properties.Name -contains 'engineSubdir' -and $entry.engineSubdir) { $entry.engineSubdir } else { $name }
 
-    $srcEngine  = Join-Path $srcRepoRoot $engineSub
-    $srcModules = Join-Path $srcRepoRoot 'Modules'
+    $baseline = Join-Path $projectsDir "$name\baseline"
+    $specPath = Join-Path $projectsDir "$name\mirror.json"
+    $spec     = Get-MirrorSpec $specPath $name
 
-    if (-not (Test-Path "$srcEngine\Source")) {
-        Write-Error "[$name] 원본 Source 없음: $srcEngine\Source"
+    if (-not (Test-Path -LiteralPath $srcRepoRoot -PathType Container)) {
+        Write-Error "[$name] 원본 저장소 루트가 없습니다: $srcRepoRoot"
         return $false
     }
 
-    $baseline   = Join-Path $projectsDir "$name\baseline"
-    $dstEngine  = Join-Path $baseline $engineSub
-    $dstModules = Join-Path $baseline 'Modules'
-    New-Item -ItemType Directory -Path $baseline -Force | Out-Null
+    # 필수 항목은 미러 이전에 전부 검증한다. 절반만 복사된 baseline 을 남기지 않는다.
+    $items = @($spec.items)
+    foreach ($item in $items) {
+        # kind 'require' 는 존재 검증 전용이므로 required 를 따로 적지 않아도 필수다.
+        if (-not $item.required -and $item.kind -ne 'require') { continue }
+        $rel = Expand-SpecPath $item.from $name $engineSub
+        $src = Resolve-UnderRoot $srcRepoRoot $rel "[$name] 원본"
+        if (-not (Test-Path -LiteralPath $src)) {
+            Write-Error "[$name] 필수 미러 항목이 원본에 없습니다: $rel ($src)"
+            return $false
+        }
+    }
 
+    New-Item -ItemType Directory -Path $baseline -Force | Out-Null
     Write-Host "[$name] baseline <- $srcRepoRoot" -ForegroundColor Cyan
 
-    robocopy "$srcEngine\Source"    "$dstEngine\Source"    /MIR /XD ".vs" "x64" "Debug" "Release" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-    $rc1 = $LASTEXITCODE
-    robocopy "$srcEngine\DevLog"    "$dstEngine\DevLog"    /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-    $rc2 = $LASTEXITCODE
-    robocopy "$srcEngine\Resources" "$dstEngine\Resources" /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-    $rc3 = $LASTEXITCODE
+    $failures = @()
+    $copied   = 0
+    $skipped  = 0
 
-    foreach ($file in @("$engineSub.vcxproj", "$engineSub.sln", 'CMakeLists.txt')) {
-        $srcFile = Join-Path $srcEngine $file
-        if (Test-Path $srcFile) { Copy-Item -LiteralPath $srcFile -Destination (Join-Path $dstEngine $file) -Force }
-    }
-    if (Test-Path "$srcRepoRoot\CyphenBuild.props") {
-        Copy-Item -LiteralPath "$srcRepoRoot\CyphenBuild.props" -Destination (Join-Path $baseline 'CyphenBuild.props') -Force
+    foreach ($item in $items) {
+        $fromRel = Expand-SpecPath $item.from $name $engineSub
+        $toRel   = if ($item.to) { Expand-SpecPath $item.to $name $engineSub } else { $fromRel }
+        $src     = Resolve-UnderRoot $srcRepoRoot $fromRel "[$name] 원본"
+        $dst     = Resolve-UnderRoot $baseline     $toRel   "[$name] baseline"
+
+        # 'require' 는 복사하지 않고 존재만 검증한다. 위 사전 검증에서 이미 확인했다.
+        if ($item.kind -eq 'require') { continue }
+
+        if (-not (Test-Path -LiteralPath $src)) { $skipped++; continue }
+
+        if ($item.kind -eq 'file') {
+            New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
+            Copy-Item -LiteralPath $src -Destination $dst -Force
+            $copied++
+            continue
+        }
+
+        if ($item.kind -ne 'tree') {
+            $failures += "$fromRel (알 수 없는 kind '$($item.kind)')"
+            continue
+        }
+
+        $roboArgs = @($src, $dst, '/MIR')
+        if ($item.excludeDirs)  { $roboArgs += '/XD'; $roboArgs += @($item.excludeDirs) }
+        if ($item.excludeFiles) { $roboArgs += '/XF'; $roboArgs += @($item.excludeFiles) }
+        $roboArgs += @('/NFL', '/NDL', '/NJH', '/NP', '/R:1', '/W:1')
+
+        & robocopy @roboArgs | Out-Null
+        # robocopy 는 0..7 이 정상(변경 없음/복사함/추가 파일 있음)이고 8 이상만 실패다.
+        if ($LASTEXITCODE -ge 8) { $failures += "$fromRel (robocopy=$LASTEXITCODE)" } else { $copied++ }
     }
 
-    # 저장소 루트 문서. Source/DevLog 어디에도 없는 현재 설계 문서가 여기 있다.
-    # run-review 는 baseline 과 DevLog 밖을 읽지 못하므로, 이것이 빠지면 정식 리뷰가
-    # 그 문서를 증거로 인용할 수 없다.
-    $rc5 = 0
-    if (Test-Path "$srcRepoRoot\Docs") {
-        robocopy "$srcRepoRoot\Docs" (Join-Path $baseline 'Docs') /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-        $rc5 = $LASTEXITCODE
-    }
-    if (Test-Path "$srcRepoRoot\README.md") {
-        Copy-Item -LiteralPath "$srcRepoRoot\README.md" -Destination (Join-Path $baseline 'README.md') -Force
-    }
-
-    $rc4 = 0
-    if (Test-Path $srcModules) {
-        robocopy $srcModules $dstModules /MIR /XD ".vs" "x64" "Debug" "Release" /XF "*.vcxproj.user" /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-        $rc4 = $LASTEXITCODE
-    }
-
-    if ($rc1 -ge 8 -or $rc2 -ge 8 -or $rc3 -ge 8 -or $rc4 -ge 8 -or $rc5 -ge 8) {
-        Write-Error "[$name] 동기화 실패 (Source=$rc1 DevLog=$rc2 Resources=$rc3 Modules=$rc4 Docs=$rc5)"
+    if ($failures.Count -gt 0) {
+        Write-Error "[$name] 동기화 실패: $($failures -join ', ')"
         return $false
     }
 
-    # baseline 마커: 로컬 파일 복사 시점 + 출처 보조 SHA/working-tree 상태 + Source 파일 수.
+    # baseline 마커: 로컬 파일 복사 시점 + 출처 보조 SHA/working-tree 상태 + 대표 트리 파일 수.
     # baseline 내용은 commit checkout 이 아니라 현재 로컬 파일에서 오므로 SHA만으로 정의되지 않는다.
     $shaInfo = Get-SourceSha $srcRepoRoot
     $sha     = if ($shaInfo.Sha) { $shaInfo.Sha } else { 'unknown' }
     $worktreeState = Get-SourceWorktreeState $srcRepoRoot
-    $srcCnt  = (Get-ChildItem "$dstEngine\Source" -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
-    $stamp   = Get-Date -Format 'yyyy-MM-ddTHH:mm'
+
+    $countRel = if ($spec.sourceCountPath) { Expand-SpecPath $spec.sourceCountPath $name $engineSub } else { '' }
+    if (-not $countRel) {
+        $countItem = @($items | Where-Object { $_.kind -eq 'tree' -and $_.required })[0]
+        if (-not $countItem) { $countItem = @($items | Where-Object { $_.kind -eq 'tree' })[0] }
+        if ($countItem) {
+            $countSpec = if ($countItem.to) { $countItem.to } else { $countItem.from }
+            $countRel  = Expand-SpecPath $countSpec $name $engineSub
+        }
+    }
+    $countPath = if ($countRel) { Join-Path $baseline $countRel } else { $baseline }
+    $srcCnt    = (Get-ChildItem -LiteralPath $countPath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+
+    $stamp = Get-Date -Format 'yyyy-MM-ddTHH:mm'
     "$stamp sync | snapshot=local-worktree commit=$sha worktree=$worktreeState Source=$srcCnt" | Set-Content -Path (Join-Path $baseline '.baseline') -Encoding utf8
 
     # 편집 사본 시드 (없을 때만; -ResetEdit 으로 강제)
-    $sClaud = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Claud") ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
-    $sCodex = Seed-Edit $baseline (Join-Path $projectsDir "$name\edit\Codex") ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
+    $editRoot = Join-Path $projectsDir "$name\edit"
+    $sClaud = Seed-Edit $baseline $editRoot 'Claud' ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
+    $sCodex = Seed-Edit $baseline $editRoot 'Codex' ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
 
     if (-not $shaInfo.Sha) {
         # 파일 미러 자체는 로컬 원본에서 정상 생성됐다. SHA는 출처 보조 정보이므로

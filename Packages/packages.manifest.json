@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "description": "Packages this workbench distributes to other local workbenches. Sync-Packages.ps1 reads this to know what a package consists of, and UserSettings/package-targets.json to know where it goes. Format notes: Common/PACKAGE_PROPAGATION.md",
+  "sharedFiles": [
+    "SyncToolRegistry.ps1"
+  ],
+  "rootFiles": {
+    "sync.ps1": "Spec-driven project mirror. What each project mirrors lives in that workbench's Projects/<name>/mirror.json, so this one script serves every mirror model. Workbenches that mirror a source repository should take this file instead of forking it."
+  },
+  "packages": {
+    "AgentSessionSync": {
+      "description": "Thin adapter for the external agent session transport tool.",
+      "keepLocal": ["agentsessionsync.config.psd1"]
+    },
+    "WorkbenchStateSync": {
+      "description": "Thin adapter for the external workbench state transport tool.",
+      "keepLocal": ["workbenchstatesync.config.psd1"]
+    },
+    "ProjectSync": {
+      "description": "Mirror contract: reads a protected source repository into baseline/ and edit/<agent>/. Only for workbenches that actually mirror a source repository.",
+      "keepLocal": []
+    }
+  }
+}

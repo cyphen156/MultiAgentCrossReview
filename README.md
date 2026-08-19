@@ -83,12 +83,16 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 # 1) 대상 프로젝트 등록 (Projects/projects.example.json -> Projects/projects.json 로 복사 후 로컬 경로 수정)
 #    { "projects": [ { "name": "ExampleProject", "sourceRepoRoot": "C:\\Path\\To\\ExampleProject", "engineSubdir": "ExampleProject" } ] }
 
-# 2) 등록 프로젝트 동기화 — baseline 채우고 edit/Claud·edit/Codex 시드
+# 2) 무엇을 미러할지 선언 (선택) — Projects/<name>/mirror.json, 형식은 Common/MIRROR_SPEC.md
+#    없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다. 미러 규칙은 sync.ps1 을
+#    고치는 것이 아니라 이 스펙 파일로 바꿉니다.
+
+# 3) 등록 프로젝트 동기화 — baseline 채우고 edit/Claud·edit/Codex 시드
 .\sync.ps1                        # 매니페스트 전체
 .\sync.ps1 -Project ExampleProject # 특정 프로젝트
 .\sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
 
-# 3) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 등록
+# 4) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 등록
 .\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
 # 사용할 Vault를 UserSettings\sync-tools.json(로컬, gitignore)에 등록. 상태 저장소 VaultRoot는 그 Vault 쪽 config에서 설정
 .\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize

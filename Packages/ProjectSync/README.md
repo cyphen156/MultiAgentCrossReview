@@ -5,6 +5,19 @@ ProjectSync is the package button for the workbench project mirror sync script.
 It wraps the root `sync.ps1`, which refreshes `Projects/<name>/baseline/` and the
 per-agent edit copies from the configured source project repositories.
 
+**무엇을 미러하는지는 이 패키지가 정하지 않습니다.** 프로젝트별 미러 스펙
+`Projects/<name>/mirror.json` 이 정하며, 형식은 `Common/MIRROR_SPEC.md` 에 있습니다.
+스펙 파일이 없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다.
+
+## 이름 경계
+
+`ProjectSync` 는 **미러 계약**입니다: 보호된 원본 저장소를 읽어 `baseline/` 과
+`edit/<agent>/` 를 만듭니다.
+
+원본을 미러하지 않는 워크벤치(예: 읽기 전용 증거 인벤토리만 만드는 구성)는 이 패키지를
+쓰지 않습니다. 같은 이름으로 다른 계약을 노출하면 `-Project` / `-ResetEdit` 를 안내하는
+이 README 가 그 워크벤치에서 거짓이 됩니다. 계약이 다르면 패키지 이름도 달라야 합니다.
+
 ProjectSync lives at `Packages/ProjectSync/`. It is a built-in one-way project mirror
 that exposes a **`Sync`** command (not `Start`/`Finish`), so the folder-scanning root
 `Start.ps1` / `Finish.ps1` intentionally skip it. Run it manually when the mirror
