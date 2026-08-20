@@ -15,7 +15,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 | 저장소 | 성격 | 역할 |
 |---|---|---|
 | `MultiAgentCrossReview` | 공개 워크벤치 | 검토 프로세스·범용 규칙·프로젝트 템플릿·오케스트레이터(`run-review.ps1`)·`_TEMPLATE`·외부 sync 도구 커넥터·정제된 실예시(`Examples/`) |
-| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 예시(도구) | 워크벤치 상태(`UserSettings/**/*.md`·`Projects/<name>/RULES.md`·`Reviews/<review-id>/`) 동기화 도구의 공개 템플릿 |
+| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 예시(도구) | 워크벤치 상태(`UserSettings/**/*.md`·`Projects/<name>/RULES.md`·`Projects/<name>/MirrorTargets.json`·`Reviews/<review-id>/`) 동기화 도구의 공개 템플릿 |
 | `MultiAgentWorkbenchStateVault` | 비공개 실사용 | 위 도구 **+ 실제 상태 데이터**를 담아 사용자가 clone해 쓰는 자기완결 인스턴스 |
 | [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 예시(도구) | Codex·Claude 세션 JSONL 동기화 + 에이전트 실행 도구의 공개 템플릿 |
 | `AgentSessionVault` | 비공개 실사용 | 위 도구 **+ 실제 세션 JSONL**을 담은 자기완결 인스턴스 |
@@ -29,7 +29,7 @@ MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독�
 한 대의 머신에서만 작업하거나 로컬 상태·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
 여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 만든 **상태 저장소**를 대상으로 경로를 설정해 사용합니다.
 
-- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 실사용 상태 도구(ToolRoot=`MultiAgentWorkbenchStateVault`)를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다.
+- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 실사용 상태 도구(ToolRoot=`MultiAgentWorkbenchStateVault`)를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다. 프로젝트 폴더에서는 그 프로젝트의 성질을 적은 두 파일만 운반합니다. `baseline/`·`edit/` 는 로컬 사본이라 제외되고, 절대경로가 든 `projects.json` 도 머신마다 달라 운반하지 않습니다.
 - 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
 - Vault의 절대경로·자격증명·세션 원문(JSONL)은 공개 README/저장소에 두지 않습니다(이름·역할만 문서화).
 
@@ -150,9 +150,10 @@ Examples/                   정제된 공개 실예시 (상태의 형태를 보�
 
 Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
   projects.example.json     공개 예시 등록부
-  projects.json             로컬 등록부(gitignore) — sync 대상 프로젝트 목록
+  projects.json             로컬 등록부(gitignore) — name + sourceRepoRoot 만. 절대경로라 운반하지 않음
   <name>/
-    RULES.md                프로젝트별 규칙 (로컬 전용·gitignore)
+    RULES.md                프로젝트별 규칙 (로컬 전용·gitignore, 상태 저장소로 운반)
+    MirrorTargets.json      미러 대상 선언 (로컬 전용·gitignore, 상태 저장소로 운반) — Common/MIRROR_SPEC.md
     baseline/               읽기전용 미러 (sync가 채움)
     edit/Claud, edit/Codex  에이전트별 코드 편집 사본
 
@@ -205,7 +206,7 @@ Reviews/                    검토 프레임워크 (공개)
 
 ## WorkbenchStateSync
 
-`UserSettings/**/*.md`, `Projects/<name>/RULES.md`, 실제 `Reviews/<review-id>/`는 공개 저장소에 커밋하지 않는 로컬 상태입니다.  
+`UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, 실제 `Reviews/<review-id>/`는 공개 저장소에 커밋하지 않는 로컬 상태입니다.  
 여러 머신에서 이 상태를 이어 써야 할 때 `Packages/WorkbenchStateSync/` 어댑터가 외부 독립 도구 `MultiAgentWorkbenchStateSync`를 호출합니다.
 
 원칙:
@@ -213,7 +214,7 @@ Reviews/                    검토 프레임워크 (공개)
 - 실사용 `ToolRoot` = 자기완결 `MultiAgentWorkbenchStateVault`(도구+실상태 데이터). 공개 `MultiAgentWorkbenchStateSync`는 같은 도구의 공개 예시 템플릿.
 - 이 워크벤치의 `Packages/WorkbenchStateSync/` = `ToolRoot` 아래 도구의 `Launchers\Start.ps1` / `Launchers\Finish.ps1`를 호출하는 얇은 어댑터.
 - 상태 저장소 = 워크벤치 개인 상태의 SSOT (룰·설정·실제 검토 기록).
-- 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized copy.
+- 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized copy.
 - Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
 - 동기화 범위, 충돌 처리, 시크릿 스캔, VaultRoot 설정은 `ToolRoot`의 도구가 소유합니다.
 

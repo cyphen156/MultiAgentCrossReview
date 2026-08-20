@@ -21,6 +21,10 @@
 - `WorkbenchStateSync`가 그 상태를 옮기는 버튼 같은 전송 도구이고,
 - 원문 세션 JSONL은 검토 상태와 분리되어 `AgentSessionSync`가 따로 운반합니다.
 
+프로젝트 폴더에서 운반되는 것은 **그 프로젝트의 성질을 적은 파일 둘뿐**입니다 — 규칙(`RULES.md`)과 미러 대상(`MirrorTargets.json`). 이 예시의 `MultiAgentCrossReview`는 원본을 미러하지 않는 프로젝트라 스펙 파일이 없습니다. 형식은 `Common/MIRROR_SPEC.md`에 있습니다.
+
+`baseline/`·`edit/` 는 로컬 사본이라 운반 대상이 아니고, `Projects/projects.json`도 머신마다 다른 절대경로를 담아 운반하지 않습니다. 그래서 예시에도 없습니다.
+
 ## 공개 예시 경로
 
 ```text
@@ -40,6 +44,7 @@ Examples/WorkbenchState/
 ```text
 UserSettings/preferences.md
 Projects/<name>/RULES.md
+Projects/<name>/MirrorTargets.json
 Reviews/<review-id>/README.md
 Reviews/<review-id>/Claud/REVIEW.md
 Reviews/<review-id>/Codex/REVIEW.md
