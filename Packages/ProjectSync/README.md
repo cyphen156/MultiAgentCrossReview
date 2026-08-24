@@ -1,44 +1,36 @@
 # ProjectSync
 
-ProjectSync는 연결된 원본 프로젝트를 이 워크벤치 안으로만 복제해 오는 **단방향 미러**입니다.
+ProjectSync는 등록된 원본 프로젝트를 Workbench 안으로 복사하는 내장 단방향 미러입니다. 원본을 직접 수정하지 않고 검토할 수 있도록 `baseline/`과 에이전트별 `edit/` 사본을 만듭니다.
 
-크로스 리뷰가 원본을 무단 수정하지 못하게 하는 것이 목적입니다. 원본은 읽기 전용으로 두고,
-`Projects/<name>/baseline/`(참고용 읽기전용 사본)과 `Projects/<name>/edit/Claud`,
-`edit/Codex`(에이전트별 수정용 사본)를 만듭니다. 원본으로 되돌려 쓰는 경로는 없습니다.
+다른 두 Sync 패키지는 외부 Vault를 호출하는 어댑터지만, ProjectSync는 이 패키지 안에 구현되어 있습니다. 미러는 현재 머신의 원본에서 다시 만들 수 있는 로컬 사본이므로 별도 Vault에 보관하지 않습니다.
 
-`Packages/` 의 다른 두 도구(AgentSessionSync, WorkbenchStateSync)와 달리 외부 Vault가
-없습니다. 나를 개인 데이터가 없기 때문입니다 — 미러는 이미 그 머신에 있는 원본에서 파생된
-로컬 사본이라 공유할 것도 개인화할 것도 없습니다. 그래서 **내장·필수**이고, 도구 본체가
-이 패키지 안에 있습니다.
+## 만들어지는 사본
 
-`Start`/`Finish` 가 아니라 **`Sync`** 명령을 노출하므로, 루트의 폴더 순회 원클릭
-(`Start.ps1`/`Finish.ps1`)에는 자연히 빠집니다. 미러가 필요할 때만 수동으로 실행합니다.
+```text
+Projects/<name>/
+  baseline/       검토와 참조에 사용하는 읽기 전용 사본
+  edit/Claud/     Claude의 변경 제안 공간
+  edit/Codex/     Codex의 변경 제안 공간
+```
 
-## 읽는 파일 두 개
+ProjectSync에는 원본으로 되돌려 쓰는 경로가 없습니다. `tree` 항목은 대상 사본 안에서 `robocopy /MIR`을 사용하므로, 실행 전에 등록 경로와 미러 스펙을 확인해야 합니다.
 
-성격이 다릅니다. 하나는 이 머신의 것이고, 하나는 프로젝트의 것입니다.
+## 설정 파일
 
-| 파일 | 동기화 | 담는 것 |
+| 파일 | 역할 | 머신 간 동기화 |
 |---|---|---|
-| `Projects/projects.json` | **안 함** | `name` + `sourceRepoRoot`. 원본이 이 머신 어디에 있는가 |
-| `Projects/<name>/MirrorTargets.json` | 함 | `engineSubdir` + 미러 대상·제외. 그 루트 밑에서 무엇을 뜰 것인가 |
+| `Projects/projects.json` | 프로젝트 이름과 이 머신의 `sourceRepoRoot` 절대경로 | 안 함 |
+| `Projects/<name>/MirrorTargets.json` | 원본에서 복사할 상대경로와 제외 항목 | WorkbenchStateSync로 운반 |
 
-`projects.json` 은 절대경로라 머신마다 다릅니다(랩탑 `D:`, 데스크탑 `F:`). 그래서 로컬에서
-직접 설정하고 동기화하지 않습니다.
+처음에는 공개 예시를 복사해 로컬 등록부를 만듭니다.
 
-`MirrorTargets.json` 은 전부 원본 루트 기준 **상대경로**입니다. 어느 머신에서 풀려도 자기
-프로젝트 밖을 가리키지 못하므로 WorkbenchStateSync가 `RULES.md` 와 함께 운반합니다.
-형식은 `Common/MIRROR_SPEC.md`. 없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다.
+```powershell
+.\Packages\ProjectSync\Startup.ps1
+```
 
-**쓸 위치를 정하는 절대경로는 운반하지 않습니다.** 틀린 머신에서 풀리면 `robocopy /MIR` 이
-엉뚱한 실제 디렉터리를 대상으로 잡고 그 안을 지웁니다.
+`MirrorTargets.json` 형식은 `Common/MIRROR_SPEC.md`에 있습니다. 파일이 없으면 내장 C++/Visual Studio 프리셋을 사용합니다.
 
-## 미러할 프로젝트가 없는 워크벤치
-
-등록된 프로젝트가 없으면 아무 일도 하지 않고 정상 종료합니다. 미러할 원본이 연결되지 않은
-워크벤치도 이 패키지를 똑같이 가집니다. 구조는 통일하고, 참여 여부는 등록으로 정합니다.
-
-## 사용법
+## 사용
 
 ```powershell
 .\Packages\ProjectSync\Sync.ps1
@@ -47,11 +39,10 @@ ProjectSync는 연결된 원본 프로젝트를 이 워크벤치 안으로만 �
 .\Packages\ProjectSync\Sync.ps1 -DryRun
 ```
 
-최초 설정(`Projects/projects.example.json` → `Projects/projects.json`):
+등록 프로젝트가 없으면 아무 작업 없이 정상 종료합니다. ProjectSync는 `Start`·`Finish`가 아닌 수동 `Sync` 명령이므로 루트의 동기화 버튼에는 포함되지 않습니다.
+
+Windows 바로가기는 Workbench 루트에서 생성합니다.
 
 ```powershell
-.\Packages\ProjectSync\Startup.ps1
+.\Launchers\Create-Shortcuts.ps1
 ```
-
-작업표시줄 바로가기(`Project-Sync`, `Project-Startup`)는 루트의
-`Launchers/Create-Shortcuts.ps1` 에서 한곳에서 생성합니다.

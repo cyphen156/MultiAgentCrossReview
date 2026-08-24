@@ -1,7 +1,8 @@
-# Example User Preferences
+# 개인 설정 예시
 
-This sanitized file represents the kind of user-facing markdown setting that can be kept in a state repository.
+실제 `UserSettings/preferences.md`에는 여러 작업에서 계속 유지할 개인 선호만 적습니다.
 
-- Preferred review language: Korean
-- Preferred review style: concise, evidence-backed, and decision-oriented
-- Do not store tokens, account identifiers, private paths, or raw session data here.
+- 검토 언어: 한국어
+- 검토 방식: 간결하게 쓰되 근거와 결정 사항을 분명히 구분
+- 동의보다 검증을 우선하고, 반대 근거가 있으면 그대로 보고
+- 토큰, 계정 식별자, 비공개 절대경로와 원문 대화 세션은 기록하지 않음

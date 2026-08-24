@@ -1,291 +1,180 @@
 # MultiAgentCrossReview
 
-MultiAgentCrossReview는 여러 AI 에이전트가 같은 주제를 먼저 독립적으로 판단하고, 이후 서로의 주장과 근거를 교차 검증하도록 만드는 공개 검토 워크벤치입니다.
+MultiAgentCrossReview는 Claude와 Codex가 같은 문제를 각자 검토한 뒤, 서로의 판단을 교차 검증하도록 만든 공개 워크벤치입니다.
 
-목표는 에이전트 사이의 합의를 빠르게 만드는 것이 아닙니다.  
-독립 판단 사이의 불일치를 보존하고, 반박·수정·증거 확인·사용자 Callback을 거쳐 설계 결함과 불확실성을 드러내는 것이 목적입니다.
+목표는 빠른 합의가 아닙니다. 처음부터 같은 답을 만들기보다 각자의 판단과 근거를 분리해 두고, 불일치가 생긴 지점을 다시 확인합니다. 사용자는 두 검토 결과와 증거를 바탕으로 최종 결정을 내립니다.
 
-이 저장소는 **실제 검토 기록의 공개 아카이브가 아닙니다.** 검토 프로세스, 템플릿, 도구, 정제된 실예시만 둡니다.  
-실제 검토 기록과 사용자별 설정은 사용자가 직접 지정한 **상태 저장소(state repository)**에 둡니다.
+이 저장소에는 검토 절차, 공통 규칙, 실행 도구, 템플릿과 정제된 예시만 둡니다. 실제 프로젝트 경로, 개인 설정, 검토 기록, 원문 대화 세션은 공개 저장소에 포함하지 않습니다.
 
-기본 구현과 자동 오케스트레이터가 공식 지원하는 검토자 조합은 **Claude + Codex 두 개**입니다. 다른 에이전트 추가는 MIT 라이선스에 따라 역할 파일, CLI 호출부, 편집 슬롯, 리뷰 단계와 템플릿을 사용자가 직접 확장할 수 있지만 공식 지원 범위에는 포함되지 않습니다.
+## 검토 흐름
 
-## 저장소 역할
+```text
+주제와 기준선 확정
+    ↓
+Claude · Codex 독립 검토
+    ↓
+서로의 판단 교차 검증
+    ↓
+각자 결론 수정 · 증거 재확인
+    ↓
+사용자 최종 결정
+```
 
-| 저장소 | 성격 | 역할 |
-|---|---|---|
-| `MultiAgentCrossReview` | 공개 워크벤치 | 검토 프로세스·범용 규칙·프로젝트 템플릿·오케스트레이터(`run-review.ps1`)·`_TEMPLATE`·외부 sync 도구 커넥터·정제된 실예시(`Examples/`) |
-| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 공개 예시(도구) | 워크벤치 상태(`UserSettings/**/*.md`·`Projects/<name>/RULES.md`·`Projects/<name>/MirrorTargets.json`·`Reviews/<review-id>/`) 동기화 도구의 공개 템플릿 |
-| `MultiAgentWorkbenchStateVault` | 비공개 실사용 | 위 도구 **+ 실제 상태 데이터**를 담아 사용자가 clone해 쓰는 자기완결 인스턴스 |
-| [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 공개 예시(도구) | Codex·Claude 세션 JSONL 동기화 + 에이전트 실행 도구의 공개 템플릿 |
-| `AgentSessionVault` | 비공개 실사용 | 위 도구 **+ 실제 세션 JSONL**을 담은 자기완결 인스턴스 |
+정식 검토에서는 두 에이전트가 상대의 초기 답변을 보기 전에 자기 판단을 먼저 기록합니다. 이후 단계에서 반박, 수정, 추가 증거와 사용자 Callback을 함께 반영합니다.
 
-**Sync ↔ Vault 관계:** 공개 `…Sync`는 예시 템플릿이고, 비공개 `…Vault`는 그 도구를 통째로 품고 실데이터를 담아 **사용자가 실제로 clone해서 쓰는 본체**입니다. Vault는 위임 커넥터가 아니라 도구+데이터 자기완결입니다.
+현재 결론은 에이전트별 `REVIEW.md`와 사용자 `DECISION.md`에 남기고, 변경 이력은 상태 저장소의 Git이 보존합니다. 자세한 기록 형식과 상태 전이는 [Reviews/README.md](Reviews/README.md)에 있습니다.
 
-공개 저장소는 프로세스·템플릿·도구·정제된 실예시만 두고, 실제 검토 인스턴스(`Reviews/<review-id>/`)는 사용자 관리 상태로 취급합니다.  
-원문 대화(JSONL)는 시스템 지침·도구 출력·절대경로까지 포함한 실행 로그라서 이 저장소에 두지 않고 `AgentSessionSync`가 따로 운반합니다.
+## 구성
 
-`WorkbenchStateSync`와 `AgentSessionSync`는 둘 다 선택 기능입니다.  
-한 대의 머신에서만 작업하거나 로컬 상태·대화 세션을 직접 관리한다면 쓰지 않아도 됩니다.  
-여러 머신에서 같은 작업 상태를 이어가야 할 때만, 사용자가 직접 만든 **상태 저장소**를 대상으로 경로를 설정해 사용합니다.
+한 Workbench는 하나의 WorkbenchStateVault와 연결되고, 그 안에는 여러 원본 프로젝트를 등록할 수 있습니다.
 
-- 상태 동기화: `Packages/WorkbenchStateSync/` 어댑터가 실사용 상태 도구(ToolRoot=`MultiAgentWorkbenchStateVault`)를 호출해 `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, `Reviews/<review-id>/**`를 상태 저장소와 동기화합니다. 프로젝트 폴더에서는 그 프로젝트의 성질을 적은 두 파일만 운반합니다. `baseline/`·`edit/` 는 로컬 사본이라 제외되고, 절대경로가 든 `projects.json` 도 머신마다 달라 운반하지 않습니다.
-- 세션 동기화: `AgentSessionSync`가 private session vault와 Codex·Claude 대화 JSONL을 동기화합니다.
-- Vault의 절대경로·자격증명·세션 원문(JSONL)은 공개 README/저장소에 두지 않습니다(이름·역할만 문서화).
+```text
+Workbench : WorkbenchStateVault : Projects = 1 : 1 : Many
+```
 
-## 원클릭 Start / Finish
+프로젝트마다 Workbench를 따로 두는 방식은 메모리와 작업 세션을 격리하기 위한 운용 선택입니다. 프레임워크 자체는 여러 프로젝트 등록을 지원합니다.
 
-루트의 `Start.ps1` / `Finish.ps1`는 `Packages/` 아래의 **외부·선택 sync 어댑터**를 한 번에 실행하는 통합 버튼입니다.
-멤버십은 별도 목록 파일이 아니라 **폴더 위치**로 정합니다 — `Packages/<name>/`에 `Start.ps1`이 있으면 실행 대상입니다. 새 sync 어댑터는 `Packages/`에 넣는 순간 포함되고, 빼면 제외됩니다.
+| 저장소 | 역할 |
+|---|---|
+| `MultiAgentCrossReview` | 공개 워크벤치. 검토 절차, 공통 규칙, 템플릿과 실행 도구를 제공합니다. |
+| [`MultiAgentWorkbenchStateSync`](https://github.com/cyphen156/MultiAgentWorkbenchStateSync) | 워크벤치 상태 동기화 도구의 공개 MIT 원본입니다. |
+| `MultiAgentWorkbenchStateVault` | 실제 설정, 프로젝트 규칙, 검토 기록을 보관하는 비공개 실사용 저장소입니다. |
+| [`AgentSessionSync`](https://github.com/cyphen156/AgentSessionSync) | 등록된 에이전트 애플리케이션들의 대화 세션을 운반하는 공개 MIT 원본입니다. |
+| `AgentSessionVault` | 여러 애플리케이션의 실제 세션 데이터를 보관하는 전역 비공개 저장소입니다. |
 
-현재 `Packages/` (원클릭 대상):
+WorkbenchStateVault는 Workbench의 상태를 맡습니다. AgentSessionVault는 프로젝트나 Workbench 단위가 아니라 등록된 에이전트 애플리케이션 전체를 다루므로 위의 1:1:Many 관계와 별개입니다.
 
-- `Packages/WorkbenchStateSync/` — 외부 `MultiAgentWorkbenchStateSync` 호출 어댑터
-- `Packages/AgentSessionSync/` — 외부 `AgentSessionSync` 호출 어댑터
+`MultiAgentWorkbenchStateSync`와 `AgentSessionSync`는 선택 기능입니다. 한 머신에서만 작업하거나 상태를 직접 관리한다면 연결하지 않아도 됩니다.
 
-두 어댑터 모두 외부 도구(ToolRoot)를 clone·설정하기 전에는 **skip**합니다(에러 아님).
+## 빠른 시작
 
-`Packages/ProjectSync/`는 `Start/Finish`가 아니라 **`Sync` 단방향 미러 명령**을 노출하므로, 폴더 순회 원클릭(Start/Finish)에는 자연히 빠집니다. 프로젝트 미러가 필요할 때만 수동으로 실행합니다.
+### 1. 프로젝트 등록
+
+`Projects/projects.example.json`을 `Projects/projects.json`으로 복사하고 원본 프로젝트의 로컬 경로를 적습니다. `projects.json`은 머신마다 경로가 달라 Git에 포함되지 않습니다.
+
+```json
+{
+  "projects": [
+    {
+      "name": "ExampleProject",
+      "sourceRepoRoot": "C:\\Path\\To\\ExampleProject"
+    }
+  ]
+}
+```
+
+여러 프로젝트를 등록했다면 명령과 검토 주제에서 대상을 명시해야 합니다. 도구와 에이전트는 첫 번째 프로젝트를 임의로 선택하지 않습니다.
+
+### 2. 프로젝트 미러 생성
+
+ProjectSync는 원본 프로젝트에서 워크벤치 안으로만 복사하는 단방향 미러입니다.
+
+```powershell
+.\Packages\ProjectSync\Startup.ps1
+.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject
+```
+
+`baseline/`은 검토 기준이 되는 읽기 전용 사본이고, `edit/Claud`와 `edit/Codex`는 각 에이전트의 수정 제안 공간입니다. 어떤 파일을 복사할지는 `Projects/<name>/MirrorTargets.json`으로 정하며, 형식은 [Common/MIRROR_SPEC.md](Common/MIRROR_SPEC.md)에 있습니다.
+
+### 3. 검토 시작
+
+```powershell
+Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
+.\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Status
+.\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Steps 8
+```
+
+등록 프로젝트가 여러 개라면 `-Project <name>`을 함께 지정합니다. 워크벤치 자체를 검토할 때는 `-Project none`을 사용할 수 있습니다.
+
+### 4. 선택: 다른 머신과 상태 공유
+
+실사용 WorkbenchStateVault를 등록한 뒤 `Start`로 가져오고 `Finish`로 돌려보냅니다.
+
+```powershell
+.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
+.\Packages\WorkbenchStateSync\Start.ps1
+.\Packages\WorkbenchStateSync\Finish.ps1
+```
+
+원문 대화 세션도 공유하려면 별도의 AgentSessionVault를 등록합니다.
+
+```powershell
+.\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
+.\Packages\AgentSessionSync\Start.ps1
+.\Packages\AgentSessionSync\Finish.ps1
+```
+
+루트의 `Start.ps1`과 `Finish.ps1`은 설정된 외부 동기화 어댑터를 한 번에 실행합니다. ProjectSync는 단방향 `Sync` 도구이므로 이 버튼에 포함되지 않습니다.
 
 ```powershell
 .\Start.ps1
 .\Finish.ps1
+.\Start.ps1 -Include WorkbenchStateSync
+.\Finish.ps1 -Include AgentSessionSync
 ```
 
-작업표시줄 고정용 Windows `.lnk` 바로가기는 로컬에서 생성합니다.
+Windows 바로가기는 로컬에서 다시 생성합니다.
 
 ```powershell
 .\Launchers\Create-Shortcuts.ps1
 ```
 
-생성된 `Launchers\Shortcuts\`의 `.lnk`는 저장소에 **추적(tracked)**됩니다. 다만 바로가기에는 머신별 절대경로가 박히므로, clone 후 `Create-Shortcuts.ps1`를 다시 실행해 로컬 경로에 맞춥니다.
+`Launchers/Shortcuts/`의 `.lnk` 파일은 저장소에서 추적하지만 머신 절대경로를 포함하므로, 새로 clone한 뒤에는 위 명령으로 현재 경로에 맞춰야 합니다.
 
-특정 패키지만 실행할 수도 있습니다.
-
-```powershell
-.\Start.ps1 -Include WorkbenchStateSync
-.\Finish.ps1 -Include AgentSessionSync
-```
-
-루트 버튼은 패키지별로 계속 진행한 뒤 `Package | Action | Result | Reason` 요약표를 출력합니다. 일부 패키지가 실패해도 나머지를 시도하고, 마지막에 실패가 하나라도 있으면 non-zero exit code를 반환합니다.
-
-프로젝트 미러 동기화는 별도로 실행합니다.
-
-```powershell
-.\Packages\ProjectSync\Sync.ps1
-.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject
-.\Packages\ProjectSync\Sync.ps1 -ResetEdit All
-```
-
-## 빠른 시작
-
-```powershell
-# 1) 대상 프로젝트 등록 (Projects/projects.example.json -> Projects/projects.json 로 복사 후 로컬 경로 수정)
-#    { "projects": [ { "name": "ExampleProject", "sourceRepoRoot": "C:\\Path\\To\\ExampleProject" } ] }
-
-# 2) 무엇을 미러할지 선언 (선택) — Projects/<name>/MirrorTargets.json, 형식은 Common/MIRROR_SPEC.md
-#    없으면 내장 기본 프리셋(C++/Visual Studio)이 쓰입니다. 미러 규칙은 도구를
-#    고치는 것이 아니라 이 스펙 파일로 바꿉니다.
-
-# 3) 등록 프로젝트 동기화 — baseline 채우고 edit/Claud·edit/Codex 시드
-.\Packages\ProjectSync\Sync.ps1                        # 매니페스트 전체
-.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject # 특정 프로젝트
-.\Packages\ProjectSync\Sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
-
-# 4) 선택: 여러 머신에서 상태 저장소를 공유해야 할 때만 WorkbenchStateSync 등록
-.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
-# 사용할 Vault를 UserSettings\sync-tools.json(로컬, gitignore)에 등록. 상태 저장소 VaultRoot는 그 Vault 쪽 config에서 설정
-.\Packages\WorkbenchStateSync\Start.ps1   # 상태 저장소 -> 현재 워크트리로 materialize
-
-# 5) 새 검토 주제 생성 + 진행
-Copy-Item Reviews\_TEMPLATE Reviews\2026-06-29_Example -Recurse
-.\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Status   # 현재 상태
-.\Reviews\run-review.ps1 -Topic 2026-06-29_Example -Steps 8  # 끝까지
-
-# 6) 선택: 작업한 상태를 상태 저장소로 되돌려 보내기
-.\Packages\WorkbenchStateSync\Finish.ps1  # 워크트리 상태 -> 상태 저장소 commit/push
-```
-
-자세한 기록 규칙은 `Reviews/README.md`,  
-범용 판단 규칙은 `Common/SHARED_RULES.md`,  
-프로젝트별 규칙은 `Projects/<name>/RULES.md`를 참고합니다.
-
-## 검토 흐름
+## 디렉터리 안내
 
 ```text
-검토 주제(README) + baseline 스냅숏 마커
-    ↓
-Codex 독립 판단 + Claude 독립 판단   (서로 안 봄)
-    ↓
-양방향 교차 검증
-    ↓
-각 에이전트의 수정 결론
-    ↓
-증거 재확인
-    ↓
-사용자 최종 결정 (DECISION.md)
+Common/                 공통 규칙, 라우팅, 프로젝트 미러 스펙
+Projects/               로컬 프로젝트 등록부와 baseline/edit 사본
+Reviews/                검토 절차, 템플릿, 오케스트레이터
+Packages/ProjectSync/   내장 프로젝트 미러 도구
+Packages/*Sync/         외부 동기화 도구를 부르는 어댑터
+UserSettings/           공개 저장소에 넣지 않는 개인 설정
+Claud/ · Codex/         검토자 역할 안내
+Examples/               공개 가능한 정제 예시
 ```
 
-초기 판단은 상대 답변을 읽지 않습니다(오케스트레이터가 순서로 봉인).  
-각 에이전트의 결론은 **단일 `REVIEW.md`**,  
-최종 판정은 **단일 `DECISION.md`**에 담고, 결론이 바뀌면 그 파일을 갱신·커밋합니다.  
-**현재 진실 = 작업트리의 파일, 변경 이력 = 상태 저장소의 git** (번호 붙은 파일을 쌓지 않습니다).
+공개 저장소에 포함되는 것은 프레임워크 파일뿐입니다. 다음 항목은 로컬 또는 사용자가 지정한 비공개 Vault에 둡니다.
 
-## 저장소 구조
+- `Projects/projects.json`과 원본 프로젝트 절대경로
+- `Projects/<name>/RULES.md`, `MirrorTargets.json`, `baseline/`, `edit/`
+- 실제 `Reviews/<review-id>/` 기록과 증거
+- `UserSettings/`의 개인 설정과 로컬 도구 등록부
+- 원문 대화 세션, 인증정보, 빌드 산출물
 
-```text
-CLAUDE.md / AGENTS.md       각 에이전트의 필수 진입점
-Common/ROUTING.md           필수 경량 라우팅 표면
-Common/SHARED_RULES.md      범용 워크벤치 규칙 (SSOT)
-Common/PROJECT_RULES.template.md  프로젝트별 규칙 템플릿 (공개)
-UserSettings/               개인 설정 공간 (README만 공개, 하위 파일은 로컬 전용·gitignore)
-Claud/ROLE.md               Claude 역할
-Codex/ROLE.md               Codex 역할
-Start.ps1 / Finish.ps1      Packages/* 외부 sync 어댑터 통합 원클릭 (폴더=멤버십)
-Launchers/                  통합/수동 실행용 Windows 런처와 작업표시줄용 .lnk 생성기
-Packages/WorkbenchStateSync/  상태 sync 도구 호출 어댑터 (ToolRoot=실사용 MultiAgentWorkbenchStateVault)
-Packages/AgentSessionSync/    세션 sync 도구 호출 어댑터 (ToolRoot=실사용 AgentSessionVault)
-Packages/ProjectSync/       내장·필수 프로젝트 미러 (Sync 명령, Start/Finish 배치 제외)
-Examples/                   정제된 공개 실예시 (상태의 형태를 보여줌)
+원본 프로젝트는 기본적으로 읽기 전용입니다. 워크벤치 수정 권한이나 검토 요청이 원본 프로젝트 수정 권한을 뜻하지 않습니다. 원본에 실제 변경을 적용하려면 사용자가 대상과 작업을 명시적으로 위임해야 합니다.
 
-Projects/                   대상 프로젝트 코드 공간 (Projects/<name>/** 는 로컬 전용·gitignore)
-  projects.example.json     공개 예시 등록부
-  projects.json             로컬 등록부(gitignore) — name + sourceRepoRoot 만. 절대경로라 운반하지 않음
-  <name>/
-    RULES.md                프로젝트별 규칙 (로컬 전용·gitignore, 상태 저장소로 운반)
-    MirrorTargets.json      미러 대상 선언 (로컬 전용·gitignore, 상태 저장소로 운반) — Common/MIRROR_SPEC.md
-    baseline/               읽기전용 미러 (sync가 채움)
-    edit/Claud, edit/Codex  에이전트별 코드 편집 사본
+## 문서 언어와 실사용 권장
 
-Reviews/                    검토 프레임워크 (공개)
-  README.md                 검토 기록 규칙
-  _TEMPLATE/                새 검토 주제 템플릿
-  run-review.ps1            반자동 교차검증 오케스트레이터
-  <review-id>/              실제 검토 인스턴스 (로컬 전용·gitignore, 상태 저장소로 동기화)
-    README.md               주제 · baseline 스냅숏 마커 · 범위 · 상태 · Callback
-    Claud/REVIEW.md + artifacts/
-    Codex/REVIEW.md + artifacts/
-    DECISION.md             사용자 최종 판정
-```
+이 공개 저장소의 문서는 관리자가 직접 읽고 운영하기 편하도록 한국어를 기본으로 씁니다. 공개 프로젝트라는 이유만으로 모든 설명을 영어로 유지할 필요는 없습니다.
 
-`Projects/<name>/` 하위(미러·편집본·빌드 산출물)는 전부 로컬 전용이라 `.gitignore`로 제외합니다.  
-실제 등록부 `Projects/projects.json`도 로컬 전용이며, 공개 저장소에는 `Projects/projects.example.json`만 둡니다.  
-대상 프로젝트 이름, 절대경로, 코드는 공개 저장소에 커밋하지 않습니다.
+다만 이 템플릿으로 실제 Workbench를 구성할 때, 에이전트에게 반복해서 주입되는 규칙 파일은 간결한 영어로 작성하는 편을 권장합니다.
 
-실제 검토 인스턴스 `Reviews/<review-id>/`도 로컬 전용(`.gitignore`)이며, 공개 저장소에는 `Reviews/README.md`·`_TEMPLATE/`·`run-review.ps1`과 `Examples/`의 정제된 실예시만 둡니다.  
-`Packages/WorkbenchStateSync/`는 공개 패키지이지만 실제 상태 저장소 경로는 공개하지 않습니다.  
-로컬 설정 파일(`Packages/WorkbenchStateSync/workbenchstatesync.config.psd1`, `WorkbenchStateSync.local.psd1`, `Packages/AgentSessionSync/agentsessionsync.config.psd1`, `AgentSessionSync.local.psd1`)은 gitignore 대상입니다.
+- `AGENTS.md`, `CLAUDE.md`
+- `Common/SHARED_RULES.md`, `Common/ROUTING.md`
+- `Claud/ROLE.md`, `Codex/ROLE.md`
+- `Projects/<name>/RULES.md`
+- 에이전트가 항상 읽는 `UserSettings/preferences.md`
 
-## 규칙 계층
+코딩 에이전트와 개발 도구는 영어 명령, 경로, 식별자를 중심으로 동작하고, 많은 모델·토크나이저에서 간결한 영어 지침이 한국어보다 적은 토큰을 쓰는 경우가 많습니다. 다만 모델과 문장에 따라 차이가 있으므로 영어가 항상 더 정확하거나 더 짧다고 보장할 수는 없습니다.
 
-규칙은 성격과 적용 시점에 따라 나눕니다.
-공개 레포에는 **범용 규칙과 템플릿만** 들어가고,  
-특정 프로젝트·개인에 묶이는 규칙은 로컬 전용(gitignore)입니다.
+실사용 규칙은 한 언어로 짧게 유지하는 것이 중요합니다. 같은 규칙을 한국어와 영어로 중복 작성하면 두 사본이 어긋나거나 에이전트가 서로 다른 문장을 별도 규칙으로 해석할 수 있습니다. 사용자를 위한 설명은 한국어로 두고, 반복 주입되는 에이전트 규칙만 필요에 따라 영어로 작성합니다. 명령어, 파일명, 설정 키와 코드 식별자는 번역하지 않습니다.
 
-| 층 | 위치 | 존재 | 적용 기준 |
-|---|---|---|---|
-| 네이티브 진입 | `AGENTS.md`, `CLAUDE.md` | 워크벤치 필수 | 해당 에이전트 세션에서 항상 |
-| 경량 라우팅 | `Common/ROUTING.md` | 워크벤치 필수 | 항상 |
-| 범용 워크벤치 | `Common/SHARED_RULES.md` | 워크벤치 필수 | 항상 |
-| 개인 선호 | `UserSettings/preferences.md` (안내 `UserSettings/README.md`) | 사용자 선택 | 파일이 있으면 이 워크벤치에서 항상 |
-| 로컬 상태·인계 | 그 외 `UserSettings/` 파일 | 사용자 선택 | 해당 작업이 그 파일의 목적에 해당할 때만 |
-| 프로젝트별 | `Projects/<name>/RULES.md` (템플릿 `Common/PROJECT_RULES.template.md`) | 사용자 선택 | 파일이 있으면 해당 활성 프로젝트에서 반드시 |
-| 정식 CrossReview | `Reviews/README.md`, `Reviews/<review-id>/` | 프로세스 선택 | 정식 검토가 가동될 때만 |
+## 문서 안내
 
-`run-review.ps1`은 `-Project`로 지정한 프로젝트를 사용합니다. 생략했을 때 등록 프로젝트가 정확히 하나면 그 프로젝트를 사용하고, 여러 개면 임의로 첫 항목을 고르지 않고 명시적 선택을 요구합니다. 워크벤치 자체 검토는 `-Project none`으로 시작할 수 있습니다.
+- [Common/ROUTING.md](Common/ROUTING.md): 작업에 따라 어떤 규칙을 읽을지 정합니다.
+- [Common/SHARED_RULES.md](Common/SHARED_RULES.md): 모든 작업에 적용되는 안전 경계와 공통 원칙입니다.
+- [Common/MIRROR_SPEC.md](Common/MIRROR_SPEC.md): `MirrorTargets.json` 형식과 ProjectSync 동작을 설명합니다.
+- [Reviews/README.md](Reviews/README.md): 정식 교차 검토의 기록 형식과 상태 흐름입니다.
+- [Packages/ProjectSync/README.md](Packages/ProjectSync/README.md): 프로젝트 미러 사용법입니다.
+- [Packages/WorkbenchStateSync/README.md](Packages/WorkbenchStateSync/README.md): 워크벤치 상태 Vault 연결법입니다.
+- [Packages/AgentSessionSync/README.md](Packages/AgentSessionSync/README.md): 전역 세션 Vault 연결법입니다.
+- [UserSettings/README.md](UserSettings/README.md): 개인 설정과 로컬 등록부의 경계입니다.
 
-활성 프로젝트의 `RULES.md`가 있으면 범용 규칙과 함께 헤드리스 프롬프트에 반드시 주입합니다. 파일이 없으면 오류가 아니며, 경고와 `shared-only` 기록을 남기고 범용 규칙으로 진행합니다.
+## 지원 범위
 
-커밋 메시지는 프로젝트 규칙이 없을 때 범용 본문 구조로 작성할 수 있습니다. DevLog는 프로젝트 규칙이 없더라도 사용자가 경로와 형식을 명시했거나 현재 프로젝트 문서에서 안전하게 확인할 수 있으면 작성할 수 있습니다. 프로젝트 전용 제목, 경로, 인코딩, 템플릿이나 관례를 기억으로 만들어내지는 않습니다.
-
-프로젝트별 커밋 본문에서 `검증`, `다음 작업`은 자주 쓰는 선택 섹션일 뿐 닫힌 목록이 아닙니다.  
-선택 섹션은 커밋 성격이나 사용자 명시 지시에 따라 제거, 추가, 이름 변경될 수 있습니다.
-
-프로젝트별 DevLog는 작성 시각만으로 범위를 정하지 않습니다.  
-각 프로젝트 룰이 이전 DevLog 이후의 대상 커밋 범위를 정합니다(예: auto-generated DevLog 커밋 자체는 요약 범위에서 제외).
-
-## WorkbenchStateSync
-
-`UserSettings/**/*.md`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, 실제 `Reviews/<review-id>/`는 공개 저장소에 커밋하지 않는 로컬 상태입니다.  
-여러 머신에서 이 상태를 이어 써야 할 때 `Packages/WorkbenchStateSync/` 어댑터가 외부 독립 도구 `MultiAgentWorkbenchStateSync`를 호출합니다.
-
-원칙:
-
-- 실사용 `ToolRoot` = 자기완결 `MultiAgentWorkbenchStateVault`(도구+실상태 데이터). 공개 `MultiAgentWorkbenchStateSync`는 같은 도구의 공개 예시 템플릿.
-- 이 워크벤치의 `Packages/WorkbenchStateSync/` = `ToolRoot` 아래 도구의 `Launchers\Start.ps1` / `Launchers\Finish.ps1`를 호출하는 얇은 어댑터.
-- 상태 저장소 = 워크벤치 개인 상태의 SSOT (룰·설정·실제 검토 기록).
-- 이 워크트리의 `UserSettings/`, `Projects/<name>/RULES.md`, `Projects/<name>/MirrorTargets.json`, `Reviews/<review-id>/` = 에이전트가 실제로 읽고 쓰는 materialized copy.
-- Claude/Codex memory = 캐시 또는 참고 맥락일 뿐 SSOT가 아닙니다.
-- 동기화 범위, 충돌 처리, 시크릿 스캔, VaultRoot 설정은 `ToolRoot`의 도구가 소유합니다.
-
-설정:
-
-```powershell
-.\Packages\WorkbenchStateSync\Register.ps1 -ToolRoot C:\Path\To\MultiAgentWorkbenchStateVault
-```
-
-이 명령은 실사용본 `MultiAgentWorkbenchStateVault` 경로를 로컬 등록부 `UserSettings\sync-tools.json`(gitignore, 절대/상대경로 허용)에 기록합니다. 상태 저장소 `VaultRoot`는 그 Vault 쪽 config에서 지정합니다. (기존 `workbenchstatesync.config.psd1`도 하위호환 fallback으로 계속 인식됩니다.)
-
-예:
-
-```powershell
-.\Packages\WorkbenchStateSync\Start.ps1    # 외부 도구 Start.ps1 위임
-.\Packages\WorkbenchStateSync\Finish.ps1   # 외부 도구 Finish.ps1 위임
-```
-
-작업표시줄 고정용 `.lnk`는 루트 `Launchers/Create-Shortcuts.ps1`로 한곳에서 생성합니다. 생성된 `Launchers/Shortcuts/`의 `.lnk`는 저장소에 추적되며, 머신별 절대경로 때문에 clone 후 재생성해 맞춥니다.
-
-## AgentSessionSync 패키지 어댑터
-
-`Packages/AgentSessionSync/`는 원문 대화 세션 JSONL을 옮기는 세션 동기화 도구를 이 워크벤치의 버튼 체계에 연결하는 얇은 어댑터입니다.
-실사용 `ToolRoot`는 자기완결 `AgentSessionVault`(도구+실세션 JSONL)를 가리키고, 공개 `AgentSessionSync`는 같은 도구의 공개 예시 템플릿입니다. 이 패키지는 `ToolRoot`의 `Launchers\Start.ps1` / `Launchers\Finish.ps1` 존재를 확인한 뒤 공통 옵션을 넘겨 호출하며, 세션 동기화 로직을 복제하지 않습니다.
-
-세션 도구의 전송 단위는 프로젝트가 아니라 **에이전트 앱 인덱스**입니다. 등록된 `ToolRoot` 하나가 이 PC의 모든 대화를 운반하므로, 워크벤치에 등록된 프로젝트 목록은 전송 범위와 무관합니다. 보존 정책(아카이브 계층·삭제 마커·`ActiveWindowDays`)도 그 도구 쪽 계약이며 이 어댑터에서 설정하지 않습니다.
-
-```powershell
-.\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
-```
-
-이 명령은 로컬 `AgentSessionVault` 경로를 `UserSettings\sync-tools.json`(gitignore)에 등록합니다. (기존 `agentsessionsync.config.psd1`도 하위호환 fallback으로 계속 인식됩니다.)
-
-```powershell
-.\Packages\AgentSessionSync\Start.ps1
-.\Packages\AgentSessionSync\Finish.ps1
-```
-
-등록이 없고 자동탐색으로도 Vault를 못 찾으면, 루트 `Start.ps1` / `Finish.ps1` 요약표에 이 패키지는 `OK`가 아니라 `SKIP`으로 표시됩니다(실패와 구분).
-
-## ProjectSync 패키지
-
-`Packages/ProjectSync/`는 **내장·필수 단방향 미러**입니다. 도구 본체가 이 패키지 안에 있습니다.
-
-```powershell
-.\Packages\ProjectSync\Sync.ps1
-.\Packages\ProjectSync\Sync.ps1 -Project ExampleProject
-.\Packages\ProjectSync\Sync.ps1 -ResetEdit All
-```
-
-이 도구는 `Sync` 단방향 명령이라(Start/Finish가 아님) 루트 원클릭 배치에 딸려 들어가지 않습니다. 프로젝트 미러 동기화는 검토 중 필요한 시점에만 수동으로 실행하는 단방향 작업이므로, 양방향 sync 도구(대화 세션/워크벤치 상태)와 묶지 않습니다.
-
-## 코드 차이와 증거
-
-- 코드 수정은 `Projects/<name>/edit/Claud`·`edit/Codex`(에이전트별)에서 합니다. `edit/<agent>` vs `baseline` diff가 그 에이전트의 제안이며, 빌드/테스트 산출물도 거기에 떨어집니다(전부 로컬).
-- 채택 후보 patch·증거 artifacts는 해당 에이전트의 `Reviews/<id>/<agent>/artifacts/`에 남기되, 이는 사용자 관리 상태(상태 저장소)에 속합니다. 공개로 내보낼 때는 명시적으로 정제한 예시(`Examples/`)로만 공개합니다.
-
-## 현재 안전 경계
-
-- 대상 프로젝트 원본은 이 저장소에서 수정하지 않습니다.
-- `Projects/<name>/baseline`은 정식 CrossReview 여부와 무관하게 에이전트가 원본 대신 우선 참조하는 읽기전용 사본입니다. `Packages/ProjectSync/Sync.ps1` 실행 시점의 로컬 원본 파일을 복사하므로 미커밋 로컬 내용도 포함될 수 있고, 마커의 커밋 SHA는 출처 보조 정보이지 사본 내용의 유일한 정의가 아닙니다. 현재 HEAD·상태·최신성은 live Git에서 확인하고, 정식 리뷰가 시작되면 선택한 baseline 스냅숏 마커를 그 검토 동안 고정합니다. 코드 수정은 `edit/{Claud,Codex}`에서만 합니다.
-- 현재 결론은 단일 파일(REVIEW.md/DECISION.md), 변경 이력은 상태 저장소의 git이 보존합니다.
-- 실제 검토 인스턴스는 공개 저장소가 아니라 사용자 상태 저장소에 둡니다. `run-review.ps1`은 기본적으로 공개 저장소에 커밋하지 않으며, 상태 저장소/워크트리에서만 `-CommitToCurrentRepo`로 커밋을 명시합니다.
-- 각 에이전트는 자기 폴더에만 씁니다(상대 폴더 읽기 전용). 최종 코드 적용·커밋·푸시는 사용자만, `DECISION.md` 기준.
-- 로컬 인증정보, 에이전트 세션, IDE 상태, 빌드 산출물, 대상 프로젝트 코드는 이 저장소에 포함하지 않습니다.
-
-## 참고
-
-- **비ASCII(한글 등)를 포함하는 워크벤치 PowerShell 스크립트는 UTF-8 BOM으로 저장합니다 — 벗기지 마세요.** PowerShell 5.1은 BOM이 없으면 한글 리터럴을 잘못 디코드하고, 운이 나쁘면 문자열 종료자를 잃어 파스 에러로 죽습니다. 순수 ASCII 스크립트는 BOM이 없어도 무방합니다. (no-BOM은 대상 엔진 소스/DevLog의 규칙이지 워크벤치 툴링 규칙이 아닙니다.)
-- 2026-06-28 이전 검토 주제는 옛 번호파일 레이아웃(레거시)으로 그대로 보존합니다.
+기본 오케스트레이터가 공식 지원하는 검토자 조합은 Claude와 Codex입니다. MIT 라이선스에 따라 다른 에이전트의 역할 파일, 실행부, 템플릿과 단계를 추가할 수 있지만, 해당 확장은 기본 지원 범위에 포함되지 않습니다.
 
 ## 라이선스
 
-MIT.
+MIT

@@ -1,119 +1,83 @@
-# Shared Rules - Generic Multi-Agent Workbench
+# 공통 작업 규칙
 
-This file contains generic MultiAgentCrossReview rules only.
-Do not put project-specific code style, architecture, DevLog paths, commit-title conventions, or personal user settings here.
+이 문서는 MultiAgentCrossReview 안에서 항상 적용되는 규칙입니다. 프로젝트 고유의 코드 스타일, 아키텍처, DevLog 경로와 개인 설정은 여기에 넣지 않습니다.
 
-Every agent operating inside this workbench must read and apply this file. `Common/ROUTING.md` is the mandatory lightweight entry surface; this file is the mandatory shared rulebook.
+## 규칙 계층
 
-Rule layers:
+1. 플랫폼 안전, 원본 보호, 권한 경계와 사용자가 현재 요청에서 정한 범위
+2. 이 문서의 공통 규칙
+3. `UserSettings/preferences.md`가 있을 때
+4. 활성 프로젝트의 `Projects/<name>/RULES.md`가 있을 때
+5. 이전 대화, 메모리와 그 밖의 비공식 메모
 
-- Workbench rules: this file always.
-- User preferences: optional `../UserSettings/preferences.md`. When present, its application is mandatory. Other private `UserSettings/` files are loaded only for the task they serve.
-- Project rules: optional `../Projects/<active>/RULES.md`. When present, they are mandatory for that project only.
-- Formal review rules: `../Reviews/README.md` only while operating a formal `Reviews/<review-id>/` CrossReview.
-- Agent role notes: `../Claud/ROLE.md` and `../Codex/ROLE.md` add reviewer emphasis only. They do not redefine shared process rules. The supported built-in reviewer pair is Claude and Codex.
+정식 교차 검토 중에는 `Reviews/README.md`도 적용합니다. `Claud/ROLE.md`와 `Codex/ROLE.md`는 검토 관점만 보태며 권한이나 절차를 바꾸지 않습니다.
 
-Priority:
+## 원본 프로젝트와 현재 상태
 
-1. Platform safety, source protection, permission boundaries, and the user's current explicit scope or authorization.
-2. Other workbench rules in this file.
-3. Local user settings when present.
-4. Active project rules when present.
-5. Prior chat, memory, local habit, or non-SSOT notes.
+- Claude와 Codex의 기본 역할은 검토자입니다. 실제 원본 코드 적용, 커밋과 푸시는 사용자가 구체적으로 위임했을 때만 수행합니다.
+- `Projects/projects.json`에 등록된 `sourceRepoRoot`는 기본적으로 보호된 읽기 전용 원본입니다.
+- 쓰기 가능한 작업 전에는 대상 경로를 확인합니다. 워크벤치, baseline, `edit/<agent>/`, 리뷰 상태, 동기화 도구나 메모리에 대한 권한은 원본 저장소 권한으로 이어지지 않습니다.
+- 현재 브랜치, HEAD, 작업 트리와 문서 최신성은 live Git과 현재 프로젝트 문서에서 확인합니다. 규칙 파일, 미러, 이전 대화와 메모리는 현재 상태의 근거가 아닙니다.
+- 측정값을 인용할 때는 대상, 단위, 구성과 집계 기준을 함께 보존합니다. 표지가 사라진 값은 추측하지 말고 원래 증거를 다시 확인합니다.
 
-If these layers conflict, the earlier layer wins. Project rules must run inside the workbench and user-setting boundaries.
+## baseline과 편집 사본
 
-Read-before-write gates:
+- `Projects/<name>/baseline/`은 코드와 프로젝트 문서를 읽는 기본 참고면입니다. 원본과의 직접 접촉을 줄이기 위한 읽기 전용 사본입니다.
+- baseline은 ProjectSync 실행 시점의 원본 로컬 파일을 `MirrorTargets.json`에 선언된 범위만큼 복사한 스냅숏입니다. 미커밋 파일을 포함할 수 있으며, 기록된 커밋 SHA만으로 내용을 정의하지 않습니다.
+- baseline에 없는 경로는 미러 범위 밖일 수 있습니다. 원본에도 없다고 결론 내리기 전에 미러 스펙과 실제 원본을 확인합니다.
+- 정식 검토를 시작하면 선택한 baseline 마커를 기록하고 고정합니다. 새 기준이 필요하면 명시적으로 새 baseline과 검토 범위를 결정합니다.
+- `Projects/<name>/edit/Claud/`와 `edit/Codex/`는 각 에이전트의 로컬 편집 공간입니다. 세션명이나 버전명을 붙인 전체 트리 사본은 복구 자료일 뿐 기준본이 아닙니다.
+- 편집 공간을 초기화하거나 예전 후보를 지우기 전에 고유 diff를 확인합니다. 채택된 변경은 작은 패치나 검토 산출물로 보존하고, 기각되거나 대체된 후보는 기준본으로 승격하지 않습니다.
 
-- Before drafting a project commit message or DevLog, read the active `../Projects/<active>/RULES.md` when it exists.
-- If no project rule file exists, continue with this file. A generic commit-message draft may use the shared body structure.
-- Without a project rule file, do not invent project-specific title formats, DevLog paths, encodings, templates, or conventions. Editing a DevLog file still requires an explicit or discoverable target and format.
+미러 범위는 `Projects/<name>/MirrorTargets.json`이 정의하고 형식은 `Common/MIRROR_SPEC.md`에 있습니다. 파일이 없으면 ProjectSync의 내장 기본 프리셋을 사용합니다. 프로젝트별 미러 범위를 바꾸려고 `Packages/ProjectSync/Sync.ps1`를 복제하거나 수정하지 않습니다.
 
-## 1. Core Workbench Invariants
+## 공개 프레임워크와 개인 상태
 
-- Claude and Codex are reviewers by default. Code application, final source edits, commits, and pushes are user-controlled unless the user explicitly delegates a specific operation.
-- Treat every source repository registered in `../Projects/projects.json` as protected and read-only by default. Resolve write targets before acting; do not create, modify, delete, build in, commit, or push a protected source unless the user's current request explicitly authorizes that exact operation and target repository.
-- Authorization for this workbench, its baseline, an `edit/<agent>` copy, review state, sync tooling, or agent memory never implies authorization for the protected source repository.
-- Use the live source repository for current branch, HEAD, working-tree state, and document freshness. Verify drift-prone claims from live Git and inspect a cited document's last change before presenting it as current.
-- `Projects/<name>/baseline/` is the default read-only reference copy for code and project documents, including outside formal CrossReview. It exists to reduce direct interaction with the protected source repository.
-- A baseline is a snapshot of the source repository's local files at sync time **within the scope declared by that project's mirror spec**, not a checkout defined solely by a commit. It may include local uncommitted content. Its marker records capture time and available source metadata; a commit SHA is useful provenance but does not fully define the copied contents.
-- The mirror spec is data, not code: `Projects/<name>/MirrorTargets.json`, format in `Common/MIRROR_SPEC.md`. When a project has no spec file, `Packages/ProjectSync/Sync.ps1` applies its built-in default preset. Do not edit `Packages/ProjectSync/Sync.ps1` to change what a project mirrors; edit that project's spec.
-- A path missing from a baseline may simply be outside the declared spec scope. Never conclude from a baseline that a file is absent from the source repository — check the spec scope, then the protected source tree.
-- This workbench is the source of truth for the `Packages/` tools. Every workbench built on it carries the same three: AgentSessionSync, WorkbenchStateSync, ProjectSync. A workbench with nothing to mirror still carries ProjectSync; it registers no project and the tool does nothing. Structure is uniform; participation is decided by registration, not by a different layout.
-- The three packages share one official origin: this public repository. `Packages/AgentSessionSync/` and `Packages/WorkbenchStateSync/` are adapters that call an external tool cloned from its own public repository; `Packages/ProjectSync/` has no external tool because it carries no private data. All three bodies are supplied by this repository, so a workbench updates all three together or not at all. Do not give one package a private update path.
-- A workbench that is not a checkout of this repository holds a copy of `Packages/`. Reconcile such a copy against this repository **explicitly, when someone decides to**, and reconcile all of it at once. Do not build a standing update mechanism, and never attach one to `Start.ps1` / `Finish.ps1` or any other always-run path.
-- The reason is not convenience. This repository is MIT licensed: modifying a copy is a granted right. A tool that silently restores a copy to upstream on every start takes that right back and destroys the modification without telling anyone. Conformity inside this workbench is an operating choice made here; it is never something the tooling imposes on a downstream copy.
-- The accepted cost is that a stale copy stays quiet until the next reconciliation. That is a trade, not a defect. Do not report the absence of automatic package distribution as an unresolved problem.
-- Use live Git for current branch, HEAD, working-tree state, and freshness checks. Read the protected source tree directly only when the baseline cannot answer the question or a live difference must be verified.
-- When a formal review starts, freeze and record the selected baseline snapshot marker. Do not refresh or substitute that snapshot during the review without an explicit new-baseline decision.
-- Project rule files contain stable instructions, boundaries, and pointers. Do not copy volatile state into them, including current commit hashes, test totals, measurements, latest log names, or remaining-work lists.
-- Preserve measurement scope, unit, configuration, and aggregation labels when citing results. If a copied value has lost its label, return to the cited project evidence instead of guessing.
-- Treat agent memory and prior chat as potentially machine-local and stale unless an explicit transport contract says otherwise. They are retrieval aids, not authority for rules, design decisions, or current project state.
-- `Projects/<name>/edit/Claud/` and `Projects/<name>/edit/Codex/` are the canonical local agent edit slots. Session-, milestone-, or version-named full-tree candidates are temporary recovery material, never an SSOT or accepted design.
-- Before resetting an edit slot or deleting a legacy candidate, inspect its unique diff. Preserve accepted work as a focused patch or formal review artifact; discard rejected or superseded work instead of promoting another full-tree candidate.
-- The public workbench keeps only review framework files under `Reviews/`: `README.md`, `_TEMPLATE/`, and review tooling.
-- Actual review instances (`Reviews/<review-id>/`) are user-managed workbench state. Keep them in the configured state repository/worktree, not in the public workbench history.
-- Raw conversation/session transport belongs outside this public workbench.
-- Inside a formal `Reviews/<review-id>/` CrossReview only, initial agent judgments must be independent: do not read the other agent's initial answer before writing your own initial answer.
-- After both formal-review initial answers exist, cross-review the other answer and preserve disagreements as useful signal. Do not impose this staged sequence on ordinary conversations, maintenance audits, or user-directed cross-checks.
-- User callbacks are review inputs. Treat them as constraints or evidence to evaluate, not as automatic truth.
-- Agreement is not the goal. The goal is to expose design flaws, uncertainty, missing evidence, and boundary violations.
+- 공개 저장소의 `Reviews/`에는 `README.md`, `_TEMPLATE/`와 실행 도구만 둡니다.
+- 실제 `Reviews/<review-id>/`는 사용자가 관리하는 WorkbenchStateVault 또는 상태 작업 트리에 둡니다.
+- 원문 대화 세션은 이 저장소 밖의 AgentSessionVault가 다룹니다.
+- 프로젝트 규칙에는 오래 유지될 지침과 근거 위치만 적습니다. 현재 커밋, 테스트 수치, 최신 로그 이름, 남은 작업처럼 자주 바뀌는 상태를 복사하지 않습니다.
+- 에이전트 메모리와 이전 대화는 탐색을 돕는 캐시입니다. 규칙, 설계 결정과 현재 상태의 기준 저장소로 사용하지 않습니다.
 
-## 2. Commit Message Body - Generic Structure
+## Packages 배포 원칙
 
-Use this body structure for code commits unless the user requests a narrower output.
-Project-specific title format, category names, and indentation rules belong in `../Projects/<active>/RULES.md`.
+이 공개 저장소가 `Packages/AgentSessionSync/`, `Packages/WorkbenchStateSync/`, `Packages/ProjectSync/` 사본의 공식 원본입니다.
 
-Required body sections:
+앞의 두 패키지는 외부 동기화 도구를 호출하는 어댑터이고, ProjectSync는 개인 데이터를 갖지 않는 내장 도구입니다. 프로젝트 등록이 없는 Workbench도 같은 구조를 유지하며 ProjectSync는 아무 작업 없이 정상 종료합니다.
+
+Workbench 사본의 `Packages/`를 이 저장소와 맞출 때는 세 패키지를 한 번에, 사람이 명시적으로 결정한 시점에 정합합니다. `Start.ps1`, `Finish.ps1` 같은 상시 실행 경로에 자동 업데이트를 붙이지 않습니다. MIT 사용자가 수정한 사본을 예고 없이 원본으로 덮어쓰지 않기 위한 경계입니다.
+
+## 정식 교차 검토
+
+다음 규칙은 `Reviews/<review-id>/`를 사용하는 정식 검토에만 적용합니다.
+
+- 두 에이전트는 상대의 초기 판단을 보기 전에 자기 초기 판단을 작성합니다.
+- 초기 판단이 모두 끝나면 서로의 근거와 결론을 교차 검증합니다.
+- 사용자의 Callback은 검토 입력입니다. 자동으로 정답으로 취급하지 않고 다른 근거와 함께 평가합니다.
+- 합의 자체가 목표는 아닙니다. 설계 결함, 불확실성, 부족한 증거와 경계 위반을 드러내는 것이 목표입니다.
+- 각 에이전트는 자기 `REVIEW.md`만 쓰고 상대 폴더는 읽기 전용으로 둡니다.
+- 현재 결론은 단일 `REVIEW.md` 또는 `DECISION.md`에 두며, 이력은 상태 저장소의 Git에 남깁니다.
+- 코드 제안은 `Projects/<name>/edit/<agent>/`에서 만들고, 최종 원본 적용은 사용자의 `DECISION.md`를 따릅니다.
+
+일반 대화, 유지보수 점검이나 사용자가 직접 요청한 비교 검토에는 독립 초기 판단 단계를 강제하지 않습니다.
+
+## 커밋 메시지 공통 구조
+
+프로젝트 규칙이나 사용자 요청이 더 구체적인 형식을 정하지 않았다면 다음 본문을 사용할 수 있습니다.
 
 ```text
 변경 요약
-	Describe the problem solved by this commit and the direction of the change in 2-4 sentences.
-	Do not describe large future work as completed.
+	해결한 문제와 변경 방향을 2~4문장으로 적습니다.
+	끝나지 않은 작업을 완료한 것처럼 쓰지 않습니다.
 
 상세 변경 내용
-	1. First change group
-		Describe concrete responsibility, boundary, file-group, or behavior changes.
+	1. 변경 묶음
+		책임, 경계, 파일군 또는 동작의 실제 변경을 적습니다.
 
-	2. Second change group
-		Focus on verifiable code changes.
+	2. 변경 묶음
+		확인 가능한 코드 변경을 적습니다.
 ```
 
-Optional body sections are an open extension area, not a closed two-item list.
-Projects or explicit user instructions may remove, add, or rename optional sections as needed.
-The following are common optional sections:
+제목, `변경 요약`, `상세 변경 내용`이 기본 구성입니다. `검증`, `다음 작업` 같은 선택 섹션은 실제 내용이 있을 때만 추가하며, 프로젝트 규칙이나 사용자 요청에 따라 이름을 바꾸거나 다른 섹션을 사용할 수 있습니다. 수행하지 않은 검증과 추측은 적지 않습니다.
 
-```text
-검증
-	Write only build/test/run results that were actually performed.
-	Preserve original PASS/FAIL counts and failure points.
-
-다음 작업
-	Write only work that remains unfinished after this commit.
-	Do not leave already implemented items as future work.
-```
-
-- Required commit components are: title, `변경 요약`, and `상세 변경 내용`.
-- Optional sections are not mandatory commit components. Add, remove, or extend them only when the commit actually needs that information or the user explicitly requests it.
-- `검증` and `다음 작업` are common optional sections. Add them only when there are real verification results or remaining work to record.
-- Use one blank line between sections. Git may collapse consecutive blank lines.
-- Do not put guesses or unverified claims in `검증`.
-
-## 3. DevLog - Generic Principles
-
-Concrete DevLog path, encoding, template, and spacing are project-specific and belong in `../Projects/<active>/RULES.md`.
-
-- DevLog range selection is project-specific and belongs in `../Projects/<active>/RULES.md`.
-- DevLogs should summarize the project-specific commit range selected by that rule, not merely the file writing time.
-
-## 4. Review Exchange
-
-Detailed review record rules live in `../Reviews/README.md`.
-
-- `Reviews/<review-id>/README.md` defines the topic, baseline, scope, status, and callbacks inside the user-managed state workspace.
-- Each agent writes only its own `REVIEW.md`; the other agent's folder is read-only.
-- Current truth is the user-managed state working tree file. History belongs in the configured state repository. Update `REVIEW.md` or `DECISION.md` instead of stacking numbered replacement files.
-- Code changes proposed during review happen in local `Projects/<name>/edit/<agent>/` copies.
-- Accepted candidate patches or evidence artifacts may be kept under `Reviews/<review-id>/<agent>/artifacts/` only in the user-managed state workspace unless explicitly sanitized for public release.
-- Final source application is controlled by the user and should follow `DECISION.md`.
-- Topics before 2026-06-28 may use the legacy numbered-file layout. Preserve them as legacy; do not migrate unless explicitly asked.
+프로젝트 커밋 메시지나 DevLog를 작성하기 전에는 해당 프로젝트의 `RULES.md`를 확인합니다. 파일이 없으면 프로젝트 고유의 제목 형식, DevLog 경로, 인코딩, 템플릿과 커밋 범위를 추측하지 않습니다.

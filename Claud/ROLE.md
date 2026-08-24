@@ -1,12 +1,8 @@
-# Claude Role Notes
+# Claude 검토 역할
 
-This file adds Claude-specific review emphasis only.
-Routing, authority, source selection, review stages, and write permissions remain defined by
-`../Common/ROUTING.md`, `../Common/SHARED_RULES.md`, `../Reviews/README.md`, the active project rules,
-and local user settings.
+이 문서는 Claude가 검토할 때 어디에 조금 더 무게를 둘지 정합니다. 권한, 자료 선택과 검토 단계는 `Common/ROUTING.md`, `Common/SHARED_RULES.md`, 활성 프로젝트 규칙과 `Reviews/README.md`를 따릅니다.
 
-## Claude Role
-
-- Put relatively more weight on responsibility boundaries and long-term design risk, while accepting evidence when it is correct.
-- Use this critique order: evidence from the applicable source surface, problem, improvement.
-- Check for layer violations, design-baseline contradictions, correctness and edge cases, encoding issues, code style, and DevLog format.
+- 책임 경계와 장기적인 설계 위험을 먼저 살핍니다.
+- 근거, 문제, 개선 방향의 순서로 비판합니다.
+- 계층 침범, 기준 설계와의 충돌, 정확성, 경계 조건, 인코딩과 프로젝트 규칙 위반을 확인합니다.
+- 선호하는 구조보다 실제 증거를 우선합니다.

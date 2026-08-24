@@ -1,41 +1,24 @@
-# Mirror Spec - `Projects/<name>/MirrorTargets.json`
+# 프로젝트 미러 스펙
 
-이 문서는 `Packages/ProjectSync/Sync.ps1` 이 읽는 **프로젝트별 미러 스펙**의 형식을 정의합니다.
+`Projects/<name>/MirrorTargets.json`은 ProjectSync가 원본 프로젝트에서 무엇을 baseline으로 복사할지 정하는 파일입니다. 프로젝트마다 다른 미러 범위를 스크립트에 하드코딩하지 않고 데이터로 관리합니다.
 
-## 왜 데이터인가
+## 저장 위치와 안전 경계
 
-"무엇을 baseline 으로 복사할 것인가"는 머신의 성질이 아니라 **프로젝트의 성질**입니다.
-예전에는 이 규칙이 `Packages/ProjectSync/Sync.ps1` 코드 안에 하드코딩돼 있어서, 다른 성질의 프로젝트를
-등록하려면 스크립트를 통째로 복제하는 수밖에 없었습니다. 복제본은 서로 동기화되지 않아
-같은 워크벤치의 머신 사이에서도 구성이 어긋났습니다.
+- 파일 경로: `Projects/<name>/MirrorTargets.json`
+- 스펙에 적는 경로는 모두 `sourceRepoRoot` 기준 상대경로입니다. 절대경로와 프로젝트 밖으로 나가는 경로는 허용하지 않습니다.
+- 이 파일은 프로젝트 규칙과 함께 WorkbenchStateSync가 운반합니다.
+- `Projects/projects.json`은 머신별 `sourceRepoRoot` 절대경로를 담으므로 동기화하지 않습니다.
+- ProjectSync는 원본을 읽기만 하며 원본으로 되돌려 쓰는 경로를 제공하지 않습니다.
+- `MirrorTargets.json`이 없으면 내장 `cpp-vs` 프리셋을 사용합니다.
 
-스펙을 데이터로 빼면 `Packages/ProjectSync/Sync.ps1` 은 한 벌만 존재하고, 프로젝트 성질의 차이는 스펙 파일이
-흡수합니다.
-
-## 위치와 운반
-
-- 경로: `Projects/<name>/MirrorTargets.json`
-- **적히는 경로는 전부 원본 루트 기준 상대경로입니다.** 절대경로를 적을 수 없습니다.
-- `Projects/*/` 는 `.gitignore` 대상이므로 공개 저장소에 들어가지 않습니다.
-- 대신 **WorkbenchStateSync 가 운반**합니다. `RULES.md` 와 같은 취급입니다.
-- 따라서 스펙은 머신 사이에서 자동으로 일치합니다.
-- `projects.json` 은 반대입니다. `sourceRepoRoot` 가 절대경로라 머신마다 다르므로
-  (랩탑 `D:`, 데스크탑 `F:`) **운반하지 않고 각 머신에서 직접 설정**합니다. 거기에는
-  `name` 과 `sourceRepoRoot` 만 둡니다.
-- 이 분리가 안전장치입니다. 쓸 위치를 정하는 절대경로가 운반되면, 틀린 머신에서 풀렸을 때
-  `robocopy /MIR` 이 엉뚱한 실제 디렉터리를 대상으로 잡고 그 안을 지웁니다. 상대경로만
-  운반하면 어디서 풀려도 자기 프로젝트 밖을 가리키지 못합니다.
-
-`Projects/<name>/MirrorTargets.json` 이 **없으면** `Packages/ProjectSync/Sync.ps1` 은 내장 기본 프리셋
-(`cpp-vs`, 아래 참조)을 사용합니다. 기존 C++/Visual Studio 구성은 이 프리셋으로 보존되므로,
-스펙 파일을 만들지 않아도 동작은 이전과 같습니다.
+쓰기 대상을 정하는 절대경로와 복사 범위를 정하는 상대경로를 분리해야 다른 머신의 잘못된 경로에 `robocopy /MIR`이 적용되는 사고를 막을 수 있습니다.
 
 ## 스키마
 
 ```json
 {
   "version": 1,
-  "description": "사람이 읽는 설명. 동작에 영향 없음.",
+  "description": "사람이 읽는 설명. 동작에는 영향이 없습니다.",
   "engineSubdir": "EngineFolderName",
   "sourceCountPath": "${engineSubdir}/Source",
   "items": [
@@ -57,73 +40,78 @@
 
 ### 최상위 필드
 
-| 필드 | 필수 | 의미 |
+| 필드 | 필수 | 설명 |
 |---|---|---|
-| `version` | 예 | 스펙 버전. 현재 `1` 만 지원. 모르는 값이면 실패합니다. |
-| `description` | 아니오 | 주석용. 동작에 영향 없음. |
-| `engineSubdir` | 아니오 | 원본 루트 밑의 주 서브디렉터리 이름. `${engineSubdir}` 치환자로 쓰입니다. 비우면 원본 루트가 곧 기준입니다. |
-| `items` | 예 | 복사 항목 배열. 비어 있으면 실패합니다. |
-| `sourceCountPath` | 아니오 | `.baseline` 마커의 `Source=N` 을 셀 baseline 상대 경로. 생략하면 첫 `required` tree, 그것도 없으면 첫 tree 를 씁니다. |
+| `version` | 예 | 스펙 버전입니다. 현재는 `1`만 지원하며 다른 값은 실패합니다. |
+| `description` | 아니요 | 사람이 읽는 설명입니다. 동작에는 영향이 없습니다. |
+| `engineSubdir` | 아니요 | 원본 루트 아래의 주 디렉터리입니다. `${engineSubdir}` 치환자에 사용하며, 비우면 원본 루트가 기준입니다. |
+| `items` | 예 | 복사 또는 검증할 항목 배열입니다. 비어 있으면 실패합니다. |
+| `sourceCountPath` | 아니요 | `.baseline` 마커의 `Source=N`을 계산할 baseline 상대경로입니다. 생략하면 첫 번째 필수 tree, 그마저 없으면 첫 번째 tree를 사용합니다. |
 
 ### `items[]` 필드
 
-| 필드 | 필수 | 의미 |
+| 필드 | 필수 | 설명 |
 |---|---|---|
-| `kind` | 예 | `"tree"` (폴더 미러), `"file"` (단일 파일 복사), `"require"` (복사하지 않고 원본 존재만 검증) |
-| `from` | 예 | **원본 저장소 루트 기준** 상대 경로 |
-| `to` | 아니오 | **baseline 루트 기준** 상대 경로. 생략하면 `from` 과 같습니다. |
-| `required` | 아니오 | `true` 면 원본에 없을 때 동기화를 **실패**시킵니다. 기본값 `false` (없으면 조용히 건너뜀). `kind: "require"` 는 이 필드와 무관하게 항상 필수입니다. |
-| `excludeDirs` | 아니오 | `kind: "tree"` 전용. robocopy `/XD` 로 전달. |
-| `excludeFiles` | 아니오 | `kind: "tree"` 전용. robocopy `/XF` 로 전달. |
+| `kind` | 예 | `tree`는 디렉터리 미러, `file`은 단일 파일 복사, `require`는 복사 없이 원본 존재 여부만 확인합니다. |
+| `from` | 예 | 원본 저장소 루트 기준 상대경로입니다. |
+| `to` | 아니요 | baseline 루트 기준 상대경로입니다. 생략하면 `from`과 같습니다. |
+| `required` | 아니요 | `true`인 원본이 없으면 실패합니다. 기본값은 `false`이며, `require` 항목은 항상 필수입니다. |
+| `excludeDirs` | 아니요 | `tree`에서 제외할 디렉터리이며 robocopy `/XD`로 전달합니다. |
+| `excludeFiles` | 아니요 | `tree`에서 제외할 파일이며 robocopy `/XF`로 전달합니다. |
 
 ### 경로 치환자
 
-`from` / `to` / `sourceCountPath` 에서 다음이 치환됩니다.
-
-- `${engineSubdir}` — 이 파일의 `engineSubdir` (비어 있으면 원본 루트가 기준)
-- `${name}` — `projects.json` 의 `name`
+- `${engineSubdir}`: 이 스펙의 `engineSubdir`
+- `${name}`: `projects.json`에 등록한 프로젝트 이름
 
 ### 경계 규칙
 
-- `from` 은 `sourceRepoRoot` 밖으로, `to` 는 baseline 루트 밖으로 나갈 수 없습니다.
-  `..` 등으로 이탈하면 실패합니다.
-- 원본은 **읽기만** 합니다. 스펙은 원본에 쓸 수단을 제공하지 않습니다.
-- `kind: "tree"` 는 robocopy `/MIR` 이므로 **대상 경로가 원본과 완전히 일치하도록 정리**됩니다.
-  `to` 를 baseline 루트(`.`)로 지정하면 baseline 전체가 그 한 항목의 거울이 되므로,
-  다른 항목과 겹치지 않게 하십시오.
+- `from`은 `sourceRepoRoot` 밖으로, `to`는 baseline 루트 밖으로 나갈 수 없습니다. `..` 등으로 경계를 벗어나면 실패합니다.
+- `tree` 항목은 robocopy `/MIR`로 대상 경로를 원본과 같게 정리합니다.
+- `to`를 baseline 루트인 `.`로 지정하면 그 항목이 baseline 전체를 관리합니다. 다른 항목과 경로가 겹치지 않게 구성해야 합니다.
 
-## 두 가지 모델
+## 미러 구성 예시
 
-이 스키마는 성격이 다른 두 미러 모델을 모두 표현합니다.
-
-**화이트리스트** — 필요한 하위 트리만 고릅니다. 원본이 크고 대부분이 무관할 때.
-
-```json
-{ "items": [ { "kind": "tree", "from": "${engineSubdir}/Source", "required": true } ] }
-```
-
-**블랙리스트** — 저장소 전체를 뜨고 생성물만 뺍니다. Unity 처럼 루트 전체가 의미 있을 때.
+필요한 트리만 고르는 화이트리스트 방식:
 
 ```json
 {
   "items": [
-    { "kind": "require", "from": "DC_Client/ProjectSettings/ProjectVersion.txt" },
     {
-      "kind": "tree", "from": ".", "to": ".", "required": true,
-      "excludeDirs": [".git", ".vs", "Library", "Logs", "obj", "Temp", "DNF"],
+      "kind": "tree",
+      "from": "${engineSubdir}/Source",
+      "required": true
+    }
+  ]
+}
+```
+
+저장소 전체를 복사하고 생성물만 제외하는 방식:
+
+```json
+{
+  "items": [
+    {
+      "kind": "require",
+      "from": "Client/ProjectSettings/ProjectVersion.txt"
+    },
+    {
+      "kind": "tree",
+      "from": ".",
+      "to": ".",
+      "required": true,
+      "excludeDirs": [".git", ".vs", "Library", "Logs", "obj", "Temp"],
       "excludeFiles": ["*.csproj", "*.sln", "*.user"]
     }
   ]
 }
 ```
 
-`kind: "require"` 는 아무것도 복사하지 않고 **원본이 기대한 종류의 저장소인지**만 확인합니다.
-위 예에서는 Unity 프로젝트 마커가 없으면 미러를 시작하기 전에 실패합니다. 잘못된 경로를
-등록해 엉뚱한 트리를 baseline 으로 뜨는 사고를 막습니다.
+`require`는 아무것도 복사하지 않고 예상한 파일이 원본에 있는지만 확인합니다. 잘못된 프로젝트 경로를 등록했을 때 미러를 시작하기 전에 실패시키는 용도로 사용할 수 있습니다.
 
-## 내장 기본 프리셋 `cpp-vs`
+## 내장 기본 프리셋: `cpp-vs`
 
-`MirrorTargets.json` 이 없을 때 적용되는 값입니다. 이전 하드코딩 동작과 동일합니다.
+`MirrorTargets.json`이 없을 때 다음 프리셋을 사용합니다.
 
 ```json
 {
@@ -149,12 +137,6 @@
 }
 ```
 
-## baseline 정의와의 관계
+## baseline을 해석할 때
 
-`Common/SHARED_RULES.md` 는 baseline 을 **"선언된 스펙 범위 안에서 뜬 원본 저장소 로컬
-파일의 스냅샷"** 으로 정의합니다. 스펙 밖의 파일은 baseline 에 **없습니다.**
-
-이는 실제 결함이었습니다. 문서가 baseline 을 "원본 로컬 파일 스냅샷"이라고만 적어 두면,
-스펙에 포함되지 않은 파일(예: 저장소 루트의 `CMake/`, `.gitattributes`)을 두고 에이전트가
-**"원본에 그 파일이 없다"고 오판**할 수 있습니다. baseline 에서 무언가를 찾지 못했다면
-먼저 이 스펙의 범위를 확인하십시오.
+baseline은 선언된 미러 범위 안에서 복사한 원본 로컬 파일의 스냅숏입니다. 스펙 밖의 파일은 baseline에 나타나지 않습니다. 파일을 찾지 못했다면 원본에 없다고 결론 내리기 전에 이 스펙의 범위를 먼저 확인합니다.

@@ -1,43 +1,33 @@
-# AgentSessionSync Package Adapter
+# AgentSessionSync 어댑터
 
-This package is a local button adapter for the session-sync tool.
+이 패키지는 MultiAgentCrossReview의 `Start`·`Finish` 버튼을 외부 AgentSessionSync 도구에 연결합니다. 세션 복사, 보존과 충돌 처리는 구현하지 않고, 선택한 ToolRoot의 `Launchers/Start.ps1`과 `Launchers/Finish.ps1`을 호출합니다.
 
-AgentSessionSync moves raw Codex/Claude session data. It is intentionally separate from WorkbenchStateSync, which moves review/workbench state such as `UserSettings/**/*.md`, `Projects/<name>/RULES.md`, and `Reviews/<review-id>/**`.
+AgentSessionSync는 프로젝트별 Workbench 상태가 아니라 등록된 에이전트 애플리케이션들의 대화 세션을 다룹니다. 하나의 AgentSessionVault가 여러 애플리케이션의 실제 세션 데이터를 보관하며, 세부 보존 정책과 애플리케이션 경로는 해당 Vault의 문서와 설정이 소유합니다.
 
-Its transport unit is the **agent app index, not a project**, so this adapter's scope is not the workbench: a single registered `ToolRoot` carries every conversation on the machine regardless of which project it belongs to. Session retention (the archive tier, tombstones, `ActiveWindowDays`) is the tool's own contract — see the vault's `README.md` — and is not configured from here.
-
-This workbench package does not copy session-sync logic; it validates the local `ToolRoot`, delegates to that tool's `Launchers\Start.ps1` / `Launchers\Finish.ps1`, and forwards common root options where they are part of the adapter contract. Point `ToolRoot` at your self-contained AgentSessionVault — the real instance you actually run (tool + real session JSONL). The public AgentSessionSync repository is only the example template.
-
-## Configuration
-
-Copy the example config to the ignored local config path:
+## 등록
 
 ```powershell
 .\Packages\AgentSessionSync\Register.ps1 -ToolRoot C:\Path\To\AgentSessionVault
 ```
 
-This registers your AgentSessionVault (the real instance; the public AgentSessionSync is only the example template) into the ignored local registry `UserSettings/sync-tools.json`. `toolRoot` may be absolute or relative (relative is resolved from the workbench root). The legacy `Packages/AgentSessionSync/agentsessionsync.config.psd1` (and root `AgentSessionSync.local.psd1`) still work as a backward-compatible fallback.
+등록 정보는 Git에서 제외되는 `UserSettings/sync-tools.json`에 저장합니다. 상대경로를 적으면 Workbench 루트 기준으로 해석합니다.
 
-## Usage
+도구 경로는 다음 순서로 찾습니다.
 
-Pull raw sessions through AgentSessionSync:
+1. `Start.ps1` 또는 `Finish.ps1`에 직접 전달한 `-ToolRoot`
+2. `UserSettings/sync-tools.json`
+3. 구형 `Packages/AgentSessionSync/agentsessionsync.config.psd1`
+4. 로컬 형제 폴더 `../AgentSessionVault`, 그다음 `../AgentSessionSync`
+
+형제 폴더 탐색은 현재 실행에서만 경로를 찾아 쓰며 등록부를 수정하지 않습니다. 공개 `AgentSessionSync` 폴더까지 확인하는 것은 등록이 없는 개발 환경에서 로컬 도구 사본을 시험하기 위한 fallback입니다. 실제 세션을 운반할 때는 AgentSessionVault를 명시적으로 등록하는 편이 안전합니다.
+
+## 사용
 
 ```powershell
 .\Packages\AgentSessionSync\Start.ps1
-```
-
-Taskbar shortcuts are generated centrally from the workbench root:
-
-```powershell
-.\Launchers\Create-Shortcuts.ps1
-```
-
-Push raw sessions through AgentSessionSync:
-
-```powershell
 .\Packages\AgentSessionSync\Finish.ps1
 ```
 
-The root `Start.ps1` / `Finish.ps1` also run this package when it is configured.
+루트 `Start.ps1`과 `Finish.ps1`도 설정된 이 패키지를 실행합니다. ToolRoot를 찾지 못하거나 외부 실행 파일이 없으면 전체 실행을 실패시키지 않고 `SKIP`으로 보고합니다.
 
-If no local config exists, or if the configured external scripts are missing, the adapter skips with a message instead of failing the entire root Start/Finish run.
+AgentSessionVault의 에이전트 등록, 로컬 애플리케이션 경로, 활성·아카이브·삭제 상태와 보존 정책은 이 어댑터에서 설정하지 않습니다.

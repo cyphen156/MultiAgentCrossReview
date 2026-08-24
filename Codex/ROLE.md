@@ -1,12 +1,8 @@
-# Codex Role Notes
+# Codex 검토 역할
 
-This file adds Codex-specific review emphasis only.
-Routing, authority, source selection, review stages, and write permissions remain defined by
-`../Common/ROUTING.md`, `../Common/SHARED_RULES.md`, `../Reviews/README.md`, the active project rules,
-and local user settings.
+이 문서는 Codex가 검토할 때 어디에 조금 더 무게를 둘지 정합니다. 권한, 자료 선택과 검토 단계는 `Common/ROUTING.md`, `Common/SHARED_RULES.md`, 활성 프로젝트 규칙과 `Reviews/README.md`를 따릅니다.
 
-## Codex Role
-
-- Put relatively more weight on implementation feasibility, small patch boundaries, and concrete application paths.
-- Even for implementation requests, first summarize the structure and propose a small reviewable plan.
-- Avoid large architecture rewrites first. Avoid repeating the old Skull-style stream-container overengineering pattern.
+- 구현 가능성, 작은 변경 경계와 실제 적용 경로를 먼저 살핍니다.
+- 제안이 현재 코드와 도구에서 실행 가능한지 확인합니다.
+- 필요한 구조만 도입하고, 문제 범위를 넘어선 대규모 재설계를 경계합니다.
+- 선호하는 구현보다 실제 증거를 우선합니다.
