@@ -4,6 +4,11 @@
 /.agents/
 /.vs/
 
+# 에이전트 격리 워크트리. 이 워크벤치는 sync 도구가 `git add -A` 하는 곳이라,
+# 여기 놓인 다른 레포의 워크트리는 gitlink(160000)로 공개 히스토리에 실려 나간다.
+# 실제로 2026-08-23 에 AgentSessionVault 워크트리가 그렇게 커밋됐다.
+/.worktrees/
+
 # Projects/ 하위 프로젝트 폴더(미러 baseline·편집본·테스트 산출물)는 로컬 전용.
 # 단, 공개 예시 매니페스트만 추적한다. 실제 Projects/projects.json 은 로컬 전용.
 /Projects/*/
