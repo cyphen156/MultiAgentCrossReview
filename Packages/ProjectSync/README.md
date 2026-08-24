@@ -13,7 +13,9 @@ Projects/<name>/
   edit/Codex/     Codex의 변경 제안 공간
 ```
 
-ProjectSync에는 원본으로 되돌려 쓰는 경로가 없습니다. `tree` 항목은 대상 사본 안에서 `robocopy /MIR`을 사용하므로, 실행 전에 등록 경로와 미러 스펙을 확인해야 합니다.
+ProjectSync에는 원본으로 되돌려 쓰는 경로가 없습니다. 실행할 때는 선택된 모든 프로젝트의 등록 경로와 미러 스펙을 먼저 검증합니다. 검증을 통과하면 새 baseline을 임시 디렉터리에 완성한 뒤 기존 baseline과 교체합니다. 복사 도중 실패하면 기존 baseline은 그대로 남습니다.
+
+강제 종료 등으로 이전 실행의 임시 디렉터리가 남았다면 다음 Sync가 정리합니다. 미완성 staging은 제거하고, 정상 baseline이 있으면 남은 backup을 제거합니다. baseline 없이 backup 하나만 남았으면 중단된 교체로 보고 복구하며, backup이 여러 개면 임의로 고르지 않고 중단합니다.
 
 ## 설정 파일
 
@@ -40,6 +42,24 @@ ProjectSync에는 원본으로 되돌려 쓰는 경로가 없습니다. `tree` �
 ```
 
 등록 프로젝트가 없으면 아무 작업 없이 정상 종료합니다. ProjectSync는 `Start`·`Finish`가 아닌 수동 `Sync` 명령이므로 루트의 동기화 버튼에는 포함되지 않습니다.
+
+`-DryRun`도 실제 실행과 같은 등록 경로·필수 항목·스펙 경계·대상 경로 중첩 검사를 수행하지만 파일은 쓰지 않습니다. `edit/Claud`와 `edit/Codex`는 처음 생성할 때만 baseline으로 채우며, 이후 Sync에서는 보존합니다. 다시 채우려면 `-ResetEdit`을 명시해야 합니다.
+
+## 안전 경계
+
+- 프로젝트 이름은 `Projects/` 바로 아래의 단일 디렉터리 이름이어야 합니다.
+- `sourceRepoRoot`는 존재하는 절대경로여야 하며 해당 Workbench 프로젝트 경로와 겹칠 수 없습니다.
+- `from`, `to`, `sourceCountPath`는 각자 지정된 루트 안에 있어야 합니다.
+- 둘 이상의 복사 항목이 같은 baseline 경로나 상하위 경로를 함께 관리하면 실행 전에 실패합니다.
+- 선택된 프로젝트 중 하나라도 검증에 실패하면 어느 baseline도 갱신하지 않습니다.
+
+## 회귀 테스트
+
+테스트는 임시 Workbench와 합성 원본을 만들며 실제 등록 프로젝트나 원본 저장소를 사용하지 않습니다.
+
+```powershell
+.\Packages\ProjectSync\tests\Test-ProjectSync.ps1
+```
 
 Windows 바로가기는 Workbench 루트에서 생성합니다.
 

@@ -39,10 +39,9 @@ else {
     $source = $entry.Source
 }
 
-$FinishScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $FinishScript))
+$FinishScript = Resolve-ToolScriptPath -ToolRoot $resolvedRoot -ScriptPath $FinishScript -Label 'WorkbenchStateSync FinishScript'
 if (-not (Test-Path -LiteralPath $FinishScript)) {
-    Write-Host "WorkbenchStateSync Finish skipped: script not found: $FinishScript" -ForegroundColor Yellow
-    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
+    throw "Registered WorkbenchStateSync FinishScript is missing: $FinishScript"
 }
 
 Write-Host 'WorkbenchStateSync Finish (adapter)' -ForegroundColor Cyan

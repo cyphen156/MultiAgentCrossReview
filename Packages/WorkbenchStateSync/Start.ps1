@@ -36,10 +36,9 @@ else {
     $source = $entry.Source
 }
 
-$StartScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $StartScript))
+$StartScript = Resolve-ToolScriptPath -ToolRoot $resolvedRoot -ScriptPath $StartScript -Label 'WorkbenchStateSync StartScript'
 if (-not (Test-Path -LiteralPath $StartScript)) {
-    Write-Host "WorkbenchStateSync Start skipped: script not found: $StartScript" -ForegroundColor Yellow
-    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
+    throw "Registered WorkbenchStateSync StartScript is missing: $StartScript"
 }
 
 Write-Host 'WorkbenchStateSync Start (adapter)' -ForegroundColor Cyan

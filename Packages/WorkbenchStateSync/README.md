@@ -17,9 +17,9 @@ Workbench와 WorkbenchStateVault의 관계는 1:1입니다. Vault에는 이 Work
 1. `Start.ps1` 또는 `Finish.ps1`에 직접 전달한 `-ToolRoot`
 2. `UserSettings/sync-tools.json`
 3. 구형 `Packages/WorkbenchStateSync/workbenchstatesync.config.psd1`
-4. 로컬 형제 폴더 `../MultiAgentWorkbenchStateVault`, 그다음 `../MultiAgentWorkbenchStateSync`
+4. 로컬 형제 폴더 `../MultiAgentWorkbenchStateVault`
 
-형제 폴더 탐색은 현재 실행에서만 경로를 찾아 쓰며 등록부를 수정하지 않습니다. 공개 Sync 폴더는 등록이 없는 개발 환경에서 로컬 도구 사본을 시험하기 위한 fallback입니다.
+형제 폴더 탐색은 현재 실행에서만 경로를 찾아 쓰며 등록부를 수정하지 않습니다. 공개 `MultiAgentWorkbenchStateSync` 저장소는 private 상태 Vault가 아니므로 자동 선택하지 않습니다. `<Project>WorkbenchStateVault`처럼 다른 이름을 쓰면 반드시 `Register.ps1`로 등록합니다.
 
 ## 사용
 
@@ -28,6 +28,6 @@ Workbench와 WorkbenchStateVault의 관계는 1:1입니다. Vault에는 이 Work
 .\Packages\WorkbenchStateSync\Finish.ps1
 ```
 
-어댑터는 선택한 ToolRoot를 `VaultRoot`로, 현재 저장소를 `WorktreeRoot`로 외부 런처에 전달합니다. 루트 `Start.ps1`과 `Finish.ps1`도 설정된 이 패키지를 실행합니다. ToolRoot를 찾지 못하거나 외부 실행 파일이 없으면 전체 실행을 실패시키지 않고 `SKIP`으로 보고합니다.
+어댑터는 선택한 ToolRoot를 `VaultRoot`로, 현재 저장소를 `WorktreeRoot`로 외부 런처에 전달합니다. 루트 `Start.ps1`과 `Finish.ps1`도 설정된 이 패키지를 실행합니다. 등록 자체가 없으면 `SKIP`하지만, 등록된 Vault의 런처가 없거나 ToolRoot 밖을 가리키면 잘못된 설치이므로 실패합니다.
 
 프로젝트 미러 갱신은 상태 동기화에 포함되지 않습니다. 필요할 때 `Packages/ProjectSync/Sync.ps1`을 따로 실행합니다.

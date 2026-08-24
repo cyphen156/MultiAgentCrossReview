@@ -1,34 +1,7 @@
-﻿#requires -Version 5.1
-# ProjectSync - 연결된 원본 프로젝트를 이 워크벤치 안으로만 미러하는 단방향 동기화 도구.
-#
-# 원본 저장소는 읽기 전용이다. 크로스 리뷰가 원본을 무단 수정하지 못하도록,
-# 원본을 로컬로 복제해 참고용/수정용 사본을 만든다:
-#   - Projects/<name>/baseline      : 원본 미러 (읽기 전용 기준 사본)
-#   - Projects/<name>/edit/Claud    : Claude 전용 편집 사본 (없을 때만 시드)
-#   - Projects/<name>/edit/Codex    : Codex 전용 편집 사본 (없을 때만 시드)
-# 원본으로 되돌려 쓰는 경로는 없다.
-#
-# 이 도구가 읽는 두 파일은 성격이 다르다:
-#
-#   Projects/projects.json              머신 로컬. 동기화하지 않는다.
-#       name + sourceRepoRoot           원본이 이 머신 어디에 있는가. 절대경로이고
-#                                       머신마다 다르다(랩탑 D:, 데스크탑 F: 등).
-#
-#   Projects/<name>/MirrorTargets.json  WorkbenchStateSync 가 운반한다.
-#       engineSubdir + items            그 원본 루트 밑에서 무엇을 뜰 것인가.
-#                                       전부 상대경로라 어느 머신에서 풀려도
-#                                       자기 프로젝트 밖을 가리키지 못한다.
-#
-# 쓸 위치를 정하는 절대경로는 절대 운반하지 않는다. 틀린 머신에서 풀리면
-# robocopy /MIR 이 엉뚱한 실제 디렉터리를 대상으로 잡고 그 안을 지운다.
-#
-# MirrorTargets.json 이 없으면 내장 기본 프리셋(cpp-vs)을 쓴다. 형식은 Common/MIRROR_SPEC.md.
-#
-# 사용법:
-#   .\Packages\ProjectSync\Sync.ps1                        # 등록된 전체
-#   .\Packages\ProjectSync\Sync.ps1 -Project CyphenEngine  # 특정 프로젝트만
-#   .\Packages\ProjectSync\Sync.ps1 -ResetEdit All         # 편집 사본 강제 재시드
-#   .\Packages\ProjectSync\Sync.ps1 -DryRun                # 대상만 보고 쓰지 않음
+#requires -Version 5.1
+# ProjectSync - registered source projects -> local Workbench mirrors.
+# Sources are read-only. A complete staging baseline replaces the live baseline
+# only after validation and every copy operation succeed.
 
 [CmdletBinding()]
 param(
@@ -39,46 +12,105 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-
 $PackageRoot  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot     = Split-Path -Parent (Split-Path -Parent $PackageRoot)
 $projectsDir  = Join-Path $repoRoot 'Projects'
 $manifestPath = Join-Path $projectsDir 'projects.json'
 $SpecFileName = 'MirrorTargets.json'
 
-# ===== 원본 저장소 상태 조회 (읽기 전용) =====
+function Normalize-FullPath([string] $path) {
+    $full = [IO.Path]::GetFullPath($path)
+    $root = [IO.Path]::GetPathRoot($full)
+    if ($full.Length -eq $root.Length) { return $root }
+    return $full.TrimEnd('\', '/')
+}
+
+function Test-IsUnderOrEqual([string] $path, [string] $root) {
+    $pathFull = Normalize-FullPath $path
+    $rootFull = Normalize-FullPath $root
+    if ($pathFull.Equals($rootFull, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    return $pathFull.StartsWith($rootFull.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Test-PathsOverlap([string] $left, [string] $right) {
+    return (Test-IsUnderOrEqual $left $right) -or (Test-IsUnderOrEqual $right $left)
+}
+
+function Resolve-UnderRoot([string] $root, [string] $relative, [string] $label) {
+    $rootFull = Normalize-FullPath $root
+    if (-not $relative -or $relative -eq '.') { return $rootFull }
+    if ([IO.Path]::IsPathRooted($relative)) { throw "$label 경로는 상대경로여야 합니다: '$relative'" }
+    $full = Normalize-FullPath (Join-Path $rootFull $relative)
+    if (-not (Test-IsUnderOrEqual $full $rootFull)) {
+        throw "$label 경로가 루트를 벗어났습니다: '$relative' -> $full (루트: $rootFull)"
+    }
+    return $full
+}
+
+function Assert-SafeProjectName([string] $name) {
+    if ([string]::IsNullOrWhiteSpace($name) -or $name -ne $name.Trim()) {
+        throw "프로젝트 이름이 비어 있거나 앞뒤 공백이 있습니다: '$name'"
+    }
+    if ($name -eq '.' -or $name -eq '..' -or [IO.Path]::IsPathRooted($name) -or
+        $name.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0 -or
+        $name.EndsWith('.') -or $name.EndsWith(' ')) {
+        throw "프로젝트 이름은 Projects 바로 아래의 단일 디렉터리 이름이어야 합니다: '$name'"
+    }
+}
+
+function Remove-SafeDirectory([string] $path, [string] $projectRoot, [string] $expectedPrefix) {
+    $pathFull = Normalize-FullPath $path
+    $projectFull = Normalize-FullPath $projectRoot
+    $parent = Normalize-FullPath (Split-Path -Parent $pathFull)
+    $leaf = Split-Path -Leaf $pathFull
+    if (-not $parent.Equals($projectFull, [StringComparison]::OrdinalIgnoreCase) -or
+        -not $leaf.StartsWith($expectedPrefix, [StringComparison]::Ordinal)) {
+        throw "안전하지 않은 임시 디렉터리 삭제를 거부했습니다: $pathFull"
+    }
+    if (Test-Path -LiteralPath $pathFull) { Remove-Item -LiteralPath $pathFull -Recurse -Force }
+}
+
+function Clear-StaleSyncTempDirectories($context) {
+    # 교체 도중 프로세스가 죽으면(Ctrl+C·강제 종료·전원) catch 가 돌지 않아
+    # .baseline-staging-* / .baseline-backup-* 가 남는다. 다음 실행은 새 토큰을 쓰므로
+    # 스스로는 절대 치우지 않는다. 각각 baseline 전체 크기라 그냥 두면 계속 쌓인다.
+    $projectRoot = Normalize-FullPath $context.ProjectRoot
+    if (-not (Test-Path -LiteralPath $projectRoot -PathType Container)) { return }
+    $staging = @(Get-ChildItem -LiteralPath $projectRoot -Directory -Filter '.baseline-staging-*' -ErrorAction SilentlyContinue)
+    $backups = @(Get-ChildItem -LiteralPath $projectRoot -Directory -Filter '.baseline-backup-*' -ErrorAction SilentlyContinue)
+    if ($staging.Count -eq 0 -and $backups.Count -eq 0) { return }
+
+    # staging 은 항상 미완성 산출물이므로 무조건 버린다.
+    foreach ($item in $staging) { Remove-SafeDirectory $item.FullName $projectRoot '.baseline-staging-' }
+
+    if ($backups.Count -eq 0) { return }
+    if (Test-Path -LiteralPath $context.Baseline) {
+        # baseline 이 제자리에 있으면 backup 은 역할이 끝난 사본이다.
+        foreach ($item in $backups) { Remove-SafeDirectory $item.FullName $projectRoot '.baseline-backup-' }
+        Write-Host "[$($context.Name)] 이전 실행이 남긴 임시 디렉터리를 정리했습니다." -ForegroundColor DarkGray
+        return
+    }
+    if ($backups.Count -eq 1) {
+        # baseline 이 없고 backup 이 하나면 교체 중간에 끊긴 것이다. 되돌린다.
+        [IO.Directory]::Move((Normalize-FullPath $backups[0].FullName), (Normalize-FullPath $context.Baseline))
+        Write-Host "[$($context.Name)] 중단된 교체를 되돌려 이전 baseline 을 복구했습니다." -ForegroundColor Yellow
+        return
+    }
+    # 어느 것이 진짜인지 판단할 근거가 없다. 추측해서 고르지 않는다.
+    throw "[$($context.Name)] baseline 이 없는데 backup 이 $($backups.Count) 개입니다. 수동으로 확인하세요: $projectRoot"
+}
 
 function Get-SourceSha([string] $repo) {
-    # 반환: @{ Sha = '<short-sha>'; Error = '<사유>' }
-    #
-    # 실패를 조용히 삼키지 않는다. commit SHA는 baseline 내용을 정의하지는 않지만
-    # 출처 추적에 유용하다.
-    #
-    # git 은 저장소 폴더를 소유한 Windows SID 와 실행 프로세스의 SID 가 다르면
-    # dubious ownership 으로 거부한다. 이 경로는 projects.json 이 지정한 것이므로
-    # 신뢰를 명시적으로 주입한다.
     $safeRepo = $repo.Replace('\', '/')
-
-    # PS 5.1 에서는 $ErrorActionPreference='Stop' 상태로 네이티브 stderr 를 리다이렉트하면
-    # 각 줄이 ErrorRecord 로 감싸여 종료 오류가 된다. 사유를 붙잡기 위해 여기서만 완화한다.
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
         $output = & git -c "safe.directory=$safeRepo" -C $repo rev-parse --short HEAD 2>&1
-        $code   = $LASTEXITCODE
-    }
-    catch {
-        return @{ Sha = ''; Error = $_.Exception.Message }
-    }
-    finally {
-        $ErrorActionPreference = $previous
-    }
-
+        $code = $LASTEXITCODE
+    } catch { return @{ Sha = ''; Error = $_.Exception.Message } }
+    finally { $ErrorActionPreference = $previous }
     $text = (($output | ForEach-Object { $_.ToString() }) -join ' ').Trim()
-
-    if ($code -eq 0 -and $text -match '^[0-9a-f]{7,40}$') {
-        return @{ Sha = $text; Error = '' }
-    }
+    if ($code -eq 0 -and $text -match '^[0-9a-f]{7,40}$') { return @{ Sha = $text; Error = '' } }
     if (-not $text) { $text = "git rev-parse 가 종료 코드 $code 로 실패했습니다." }
     return @{ Sha = ''; Error = $text }
 }
@@ -90,30 +122,18 @@ function Get-SourceWorktreeState([string] $repo) {
     try {
         $output = @(& git -c "safe.directory=$safeRepo" -C $repo status --porcelain 2>$null)
         $code = $LASTEXITCODE
-    }
-    catch {
-        return 'unknown'
-    }
-    finally {
-        $ErrorActionPreference = $previous
-    }
-
+    } catch { return 'unknown' }
+    finally { $ErrorActionPreference = $previous }
     if ($code -ne 0) { return 'unknown' }
     if ($output.Count -eq 0) { return 'clean' }
     return 'dirty'
 }
 
-# ===== 미러 대상 스펙 =====
-
 function Get-DefaultMirrorTargets {
-    # 내장 기본 프리셋 'cpp-vs'. MirrorTargets.json 이 없을 때 쓰인다.
-    # 형식 문서는 Common/MIRROR_SPEC.md.
     return [pscustomobject]@{
-        version         = 1
-        description     = 'built-in default: C++ / Visual Studio engine repository'
-        engineSubdir    = ''
-        sourceCountPath = '${engineSubdir}/Source'
-        items           = @(
+        version = 1; description = 'built-in default: C++ / Visual Studio engine repository'
+        engineSubdir = ''; sourceCountPath = '${engineSubdir}/Source'
+        items = @(
             [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/Source'; required = $true; excludeDirs = @('.vs', 'x64', 'Debug', 'Release') },
             [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/DevLog' },
             [pscustomobject]@{ kind = 'tree'; from = '${engineSubdir}/Resources' },
@@ -133,228 +153,236 @@ function Get-MirrorTargets([string] $specPath, [string] $name) {
         Write-Host "[$name] $SpecFileName 없음 - 내장 기본 프리셋(cpp-vs) 사용" -ForegroundColor DarkGray
         return Get-DefaultMirrorTargets
     }
-
-    try {
-        $spec = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    }
-    catch {
-        throw "[$name] $SpecFileName 을 읽지 못했습니다: $specPath`n  $($_.Exception.Message)"
-    }
-
-    # 스펙이 깨졌을 때 조용히 기본값으로 되돌아가면, 선언한 범위와 실제 baseline 이
-    # 어긋난 채로 리뷰가 진행된다. 알 수 없는 스펙은 실패시킨다.
+    try { $spec = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { throw "[$name] $SpecFileName 을 읽지 못했습니다: $specPath`n  $($_.Exception.Message)" }
     if ($null -eq $spec.version -or [int] $spec.version -ne 1) {
         throw "[$name] 지원하지 않는 $SpecFileName version 입니다: '$($spec.version)' (지원: 1)"
     }
-    if (@($spec.items).Count -eq 0) {
-        throw "[$name] $SpecFileName 의 items 가 비어 있습니다: $specPath"
-    }
+    if (@($spec.items).Count -eq 0) { throw "[$name] $SpecFileName 의 items 가 비어 있습니다: $specPath" }
     return $spec
 }
 
 function Expand-SpecPath([string] $path, [string] $name, [string] $engineSub) {
     if (-not $path) { return '' }
     $expanded = $path.Replace('${engineSubdir}', $engineSub).Replace('${name}', $name).Replace('/', '\')
-    # engineSubdir 가 비면 '${engineSubdir}/Source' 가 '\Source' 로 남아 루트 기준
-    # 절대경로처럼 보인다. 앞쪽 구분자를 정리해 항상 상대경로로 유지한다.
-    return $expanded.TrimStart('\')
-}
-
-function Resolve-UnderRoot([string] $root, [string] $relative, [string] $label) {
-    # '.' 를 루트 자신으로 허용하되, '..' 로 루트 밖을 가리키는 경로는 거부한다.
-    $rootFull = [IO.Path]::GetFullPath($root).TrimEnd('\', '/')
-    if (-not $relative) { return $rootFull }
-    $full = [IO.Path]::GetFullPath((Join-Path $rootFull $relative)).TrimEnd('\', '/')
-    if ($full -ne $rootFull -and -not $full.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
-        throw "$label 경로가 루트를 벗어났습니다: '$relative' -> $full (루트: $rootFull)"
+    # Only remove the separator introduced by an empty engineSubdir token.
+    # An explicitly rooted path must remain rooted so Resolve-UnderRoot rejects it.
+    if (-not $engineSub -and ($path.StartsWith('${engineSubdir}/') -or $path.StartsWith('${engineSubdir}\'))) {
+        $expanded = $expanded.TrimStart('\')
     }
-    return $full
+    return $expanded
 }
 
-# ===== 편집 사본 =====
+function New-MirrorPlan($spec, [string] $name, [string] $sourceRoot, [string] $baselineRoot) {
+    $engineSub = if ($spec.PSObject.Properties.Name -contains 'engineSubdir' -and $spec.engineSubdir) {
+        Expand-SpecPath ([string] $spec.engineSubdir) $name ''
+    } else { '' }
+    if ($engineSub) { [void](Resolve-UnderRoot $sourceRoot $engineSub "[$name] engineSubdir") }
+    $plan = @(); $copyDestinations = @(); $index = 0
+    foreach ($item in @($spec.items)) {
+        $index++
+        if ($null -eq $item) { throw "[$name] items[$index] 가 비어 있습니다." }
+        $kind = [string] $item.kind
+        if ($kind -notin @('tree', 'file', 'require')) { throw "[$name] items[$index]의 kind가 올바르지 않습니다: '$kind'" }
+        $fromSpec = [string] $item.from
+        if ([string]::IsNullOrWhiteSpace($fromSpec)) { throw "[$name] items[$index]의 from이 비어 있습니다." }
+        $fromRel = Expand-SpecPath $fromSpec $name $engineSub
+        $source = Resolve-UnderRoot $sourceRoot $fromRel "[$name] 원본"
+        $exists = Test-Path -LiteralPath $source
+        $required = ($kind -eq 'require') -or [bool] $item.required
+        if ($required -and -not $exists) { throw "[$name] 필수 미러 항목이 원본에 없습니다: $fromRel ($source)" }
+        if ($exists -and $kind -eq 'tree' -and -not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "[$name] tree 항목의 원본이 디렉터리가 아닙니다: $fromRel"
+        }
+        if ($exists -and $kind -eq 'file' -and -not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "[$name] file 항목의 원본이 파일이 아닙니다: $fromRel"
+        }
+        $toRel = ''; $destination = ''
+        if ($kind -ne 'require') {
+            $toSpec = if ($item.PSObject.Properties.Name -contains 'to' -and $item.to) { [string] $item.to } else { $fromSpec }
+            $toRel = Expand-SpecPath $toSpec $name $engineSub
+            $destination = Resolve-UnderRoot $baselineRoot $toRel "[$name] baseline"
+            foreach ($other in $copyDestinations) {
+                if (Test-PathsOverlap $destination $other.Destination) {
+                    throw "[$name] 미러 대상 경로가 겹칩니다: '$toRel' <-> '$($other.ToRelative)'"
+                }
+            }
+            $copyDestinations += [pscustomobject]@{ Destination = $destination; ToRelative = $toRel }
+        }
+        $plan += [pscustomobject]@{
+            Kind = $kind; FromRelative = $fromRel; ToRelative = $toRel; Source = $source
+            Exists = $exists; Required = $required
+            ExcludeDirs = @($item.excludeDirs); ExcludeFiles = @($item.excludeFiles)
+        }
+    }
+    $countRel = if ($spec.PSObject.Properties.Name -contains 'sourceCountPath' -and $spec.sourceCountPath) {
+        Expand-SpecPath ([string] $spec.sourceCountPath) $name $engineSub
+    } else { '' }
+    if (-not $countRel) {
+        $countItem = @($plan | Where-Object { $_.Kind -eq 'tree' -and $_.Required })[0]
+        if (-not $countItem) { $countItem = @($plan | Where-Object { $_.Kind -eq 'tree' })[0] }
+        if ($countItem) { $countRel = $countItem.ToRelative }
+    }
+    if ($countRel) { [void](Resolve-UnderRoot $baselineRoot $countRel "[$name] sourceCountPath") }
+    return [pscustomobject]@{ Items = $plan; SourceCountRelative = $countRel }
+}
+
+function New-ProjectContext($entry) {
+    if ($null -eq $entry) { throw 'projects.json에 빈 프로젝트 항목이 있습니다.' }
+    $name = [string] $entry.name
+    $sourceValue = [string] $entry.sourceRepoRoot
+    Assert-SafeProjectName $name
+    if ([string]::IsNullOrWhiteSpace($sourceValue) -or -not [IO.Path]::IsPathRooted($sourceValue)) {
+        throw "[$name] sourceRepoRoot는 절대경로여야 합니다: '$sourceValue'"
+    }
+    $sourceRoot = Normalize-FullPath $sourceValue
+    if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container)) { throw "[$name] 원본 저장소 루트가 없습니다: $sourceRoot" }
+    $projectRoot = Resolve-UnderRoot $projectsDir $name "[$name] 프로젝트"
+    if (Test-PathsOverlap $sourceRoot $projectRoot) {
+        throw "[$name] 원본과 Workbench 프로젝트 경로가 겹칩니다: source=$sourceRoot project=$projectRoot"
+    }
+    $baseline = Join-Path $projectRoot 'baseline'
+    $specPath = Join-Path $projectRoot $SpecFileName
+    $spec = Get-MirrorTargets $specPath $name
+    return [pscustomobject]@{
+        Name = $name; SourceRoot = $sourceRoot; ProjectRoot = $projectRoot; Baseline = $baseline
+        SpecPath = $specPath; Spec = $spec; Plan = (New-MirrorPlan $spec $name $sourceRoot $baseline)
+    }
+}
 
 function Seed-Edit([string] $baseline, [string] $editRoot, [string] $agent, [bool] $force) {
-    # 편집 슬롯은 반드시 edit 루트 아래여야 한다. $agent 는 코드 상수지만, 경로 결합
-    # 결과를 확인하지 않으면 이 함수는 -Recurse -Force 삭제를 임의 경로에 수행할 수 있다.
-    $editRootFull = [IO.Path]::GetFullPath($editRoot).TrimEnd('\', '/')
-    $editPath     = [IO.Path]::GetFullPath((Join-Path $editRootFull $agent))
-    if (-not $editPath.StartsWith($editRootFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
-        throw "편집 사본 경로가 edit 루트를 벗어났습니다: $editPath"
-    }
-
-    if ($force -and (Test-Path -LiteralPath $editPath)) {
-        Remove-Item -LiteralPath $editPath -Recurse -Force
-    }
+    $editRootFull = Normalize-FullPath $editRoot
+    $editPath = Resolve-UnderRoot $editRootFull $agent '편집 사본'
+    if ($force -and (Test-Path -LiteralPath $editPath)) { Remove-Item -LiteralPath $editPath -Recurse -Force }
     if (-not (Test-Path -LiteralPath $editPath)) {
         New-Item -ItemType Directory -Path $editPath -Force | Out-Null
         robocopy $baseline $editPath /MIR /NFL /NDL /NJH /NP /R:1 /W:1 | Out-Null
-        if ($LASTEXITCODE -ge 8) {
-            throw "편집 사본 시드 실패: $baseline -> $editPath (robocopy=$LASTEXITCODE)"
-        }
+        if ($LASTEXITCODE -ge 8) { throw "편집 사본 시드 실패: $baseline -> $editPath (robocopy=$LASTEXITCODE)" }
         return 'seeded'
     }
     return 'kept'
 }
 
-# ===== 프로젝트 하나 미러 =====
-
-function Sync-Project($entry) {
-    $name        = $entry.name
-    $srcRepoRoot = $entry.sourceRepoRoot
-
-    $baseline = Join-Path $projectsDir "$name\baseline"
-    $specPath = Join-Path $projectsDir "$name\$SpecFileName"
-    $spec     = Get-MirrorTargets $specPath $name
-
-    # engineSubdir 는 원본 루트 기준 상대경로이므로 스펙 쪽에 있다.
-    # projects.json 에는 이 머신의 절대경로만 남는다.
-    $engineSub = if ($spec.PSObject.Properties.Name -contains 'engineSubdir' -and $spec.engineSubdir) { [string] $spec.engineSubdir } else { '' }
-
-    if (-not (Test-Path -LiteralPath $srcRepoRoot -PathType Container)) {
-        Write-Error "[$name] 원본 저장소 루트가 없습니다: $srcRepoRoot"
-        return $false
-    }
-
-    # 필수 항목은 미러 이전에 전부 검증한다. 절반만 복사된 baseline 을 남기지 않는다.
-    $items = @($spec.items)
-    foreach ($item in $items) {
-        # kind 'require' 는 존재 검증 전용이므로 required 를 따로 적지 않아도 필수다.
-        if (-not $item.required -and $item.kind -ne 'require') { continue }
-        $rel = Expand-SpecPath $item.from $name $engineSub
-        $src = Resolve-UnderRoot $srcRepoRoot $rel "[$name] 원본"
-        if (-not (Test-Path -LiteralPath $src)) {
-            Write-Error "[$name] 필수 미러 항목이 원본에 없습니다: $rel ($src)"
-            return $false
+function Copy-PlanToStaging($context, [string] $staging) {
+    New-Item -ItemType Directory -Path $staging -Force | Out-Null
+    foreach ($item in @($context.Plan.Items)) {
+        if ($item.Kind -eq 'require' -or -not $item.Exists) { continue }
+        if (-not (Test-Path -LiteralPath $item.Source)) {
+            throw "[$($context.Name)] 검증 후 원본 항목이 사라졌습니다: $($item.FromRelative)"
         }
-    }
-
-    if ($DryRun) {
-        Write-Host "[$name] dry-run  source=$srcRepoRoot  items=$($items.Count)  spec=$(if (Test-Path -LiteralPath $specPath) { $SpecFileName } else { 'built-in cpp-vs' })" -ForegroundColor DarkGray
-        return $true
-    }
-
-    New-Item -ItemType Directory -Path $baseline -Force | Out-Null
-    Write-Host "[$name] baseline <- $srcRepoRoot" -ForegroundColor Cyan
-
-    $failures = @()
-
-    foreach ($item in $items) {
-        # 'require' 는 복사하지 않고 존재만 검증한다. 위 사전 검증에서 이미 확인했다.
-        if ($item.kind -eq 'require') { continue }
-
-        $fromRel = Expand-SpecPath $item.from $name $engineSub
-        $toRel   = if ($item.to) { Expand-SpecPath $item.to $name $engineSub } else { $fromRel }
-        $src     = Resolve-UnderRoot $srcRepoRoot $fromRel "[$name] 원본"
-        $dst     = Resolve-UnderRoot $baseline     $toRel   "[$name] baseline"
-
-        if (-not (Test-Path -LiteralPath $src)) { continue }
-
-        if ($item.kind -eq 'file') {
-            New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force | Out-Null
-            Copy-Item -LiteralPath $src -Destination $dst -Force
+        $destination = Resolve-UnderRoot $staging $item.ToRelative "[$($context.Name)] staging"
+        if ($item.Kind -eq 'file') {
+            New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+            Copy-Item -LiteralPath $item.Source -Destination $destination -Force
             continue
         }
-
-        if ($item.kind -ne 'tree') {
-            $failures += "$fromRel (알 수 없는 kind '$($item.kind)')"
-            continue
-        }
-
-        $roboArgs = @($src, $dst, '/MIR')
-        if ($item.excludeDirs)  { $roboArgs += '/XD'; $roboArgs += @($item.excludeDirs) }
-        if ($item.excludeFiles) { $roboArgs += '/XF'; $roboArgs += @($item.excludeFiles) }
+        $roboArgs = @($item.Source, $destination, '/MIR')
+        if ($item.ExcludeDirs.Count -gt 0) { $roboArgs += '/XD'; $roboArgs += @($item.ExcludeDirs) }
+        if ($item.ExcludeFiles.Count -gt 0) { $roboArgs += '/XF'; $roboArgs += @($item.ExcludeFiles) }
         $roboArgs += @('/NFL', '/NDL', '/NJH', '/NP', '/R:1', '/W:1')
-
         & robocopy @roboArgs | Out-Null
-        # robocopy 는 0..7 이 정상(변경 없음/복사함/추가 파일 있음)이고 8 이상만 실패다.
-        if ($LASTEXITCODE -ge 8) { $failures += "$fromRel (robocopy=$LASTEXITCODE)" }
+        if ($LASTEXITCODE -ge 8) { throw "[$($context.Name)] tree 복사 실패: $($item.FromRelative) (robocopy=$LASTEXITCODE)" }
     }
-
-    if ($failures.Count -gt 0) {
-        Write-Error "[$name] 동기화 실패: $($failures -join ', ')"
-        return $false
-    }
-
-    # baseline 마커: 로컬 파일 복사 시점 + 출처 보조 SHA/working-tree 상태 + 대표 트리 파일 수.
-    # baseline 내용은 commit checkout 이 아니라 현재 로컬 파일에서 오므로 SHA만으로 정의되지 않는다.
-    $shaInfo = Get-SourceSha $srcRepoRoot
-    $sha     = if ($shaInfo.Sha) { $shaInfo.Sha } else { 'unknown' }
-    $worktreeState = Get-SourceWorktreeState $srcRepoRoot
-
-    $countRel = if ($spec.sourceCountPath) { Expand-SpecPath $spec.sourceCountPath $name $engineSub } else { '' }
-    if (-not $countRel) {
-        $countItem = @($items | Where-Object { $_.kind -eq 'tree' -and $_.required })[0]
-        if (-not $countItem) { $countItem = @($items | Where-Object { $_.kind -eq 'tree' })[0] }
-        if ($countItem) {
-            $countSpec = if ($countItem.to) { $countItem.to } else { $countItem.from }
-            $countRel  = Expand-SpecPath $countSpec $name $engineSub
-        }
-    }
-    $countPath = if ($countRel) { Join-Path $baseline $countRel } else { $baseline }
-    $srcCnt    = (Get-ChildItem -LiteralPath $countPath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
-
-    $stamp = Get-Date -Format 'yyyy-MM-ddTHH:mm'
-    "$stamp sync | snapshot=local-worktree commit=$sha worktree=$worktreeState Source=$srcCnt" | Set-Content -Path (Join-Path $baseline '.baseline') -Encoding utf8
-
-    # 편집 사본 시드 (없을 때만; -ResetEdit 으로 강제)
-    $editRoot = Join-Path $projectsDir "$name\edit"
-    $sClaud = Seed-Edit $baseline $editRoot 'Claud' ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
-    $sCodex = Seed-Edit $baseline $editRoot 'Codex' ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
-
-    if (-not $shaInfo.Sha) {
-        # 파일 미러 자체는 로컬 원본에서 정상 생성됐다. SHA는 출처 보조 정보이므로
-        # 읽기 실패를 숨기지는 않되 baseline 생성 실패로 취급하지 않는다.
-        Write-Warning "[$name] 파일 미러는 갱신했지만 출처 커밋 SHA 를 읽지 못했습니다."
-        Write-Warning "[$name]   사유: $($shaInfo.Error)"
-        Write-Warning "[$name]   마커에 commit=unknown 이 기록되었습니다."
-    }
-
-    Write-Host "[$name] OK  snapshot=local-worktree  commit=$sha  worktree=$worktreeState  Source=$srcCnt  edit/Claud=$sClaud  edit/Codex=$sCodex" -ForegroundColor Green
-    return $true
 }
 
-# ===== 진입 =====
+function Install-StagedBaseline($context, [string] $staging, [string] $backup) {
+    $oldMoved = $false; $newMoved = $false
+    try {
+        if (Test-Path -LiteralPath $context.Baseline) {
+            [IO.Directory]::Move((Normalize-FullPath $context.Baseline), (Normalize-FullPath $backup))
+            $oldMoved = $true
+        }
+        [IO.Directory]::Move((Normalize-FullPath $staging), (Normalize-FullPath $context.Baseline))
+        $newMoved = $true
+    } catch {
+        if (-not $newMoved -and $oldMoved -and -not (Test-Path -LiteralPath $context.Baseline) -and (Test-Path -LiteralPath $backup)) {
+            [IO.Directory]::Move((Normalize-FullPath $backup), (Normalize-FullPath $context.Baseline))
+        }
+        throw
+    }
+    if ($oldMoved) { Remove-SafeDirectory $backup $context.ProjectRoot '.baseline-backup-' }
+}
 
-# 등록부가 없거나 등록된 프로젝트가 없는 것은 오류가 아니다. 미러할 원본이
-# 연결되지 않은 워크벤치도 있다. 그런 곳에서는 아무 일도 하지 않고 끝낸다.
+function Sync-Project($context) {
+    $name = $context.Name
+    if ($DryRun) {
+        Write-Host "[$name] dry-run  source=$($context.SourceRoot)  items=$(@($context.Plan.Items).Count)" -ForegroundColor DarkGray
+        foreach ($item in @($context.Plan.Items)) {
+            $action = if ($item.Kind -eq 'require') { 'require' } elseif ($item.Exists) { "$($item.Kind) -> $($item.ToRelative)" } else { 'optional missing (skip)' }
+            Write-Host "  $($item.FromRelative)  [$action]" -ForegroundColor DarkGray
+        }
+        return
+    }
+    New-Item -ItemType Directory -Path $context.ProjectRoot -Force | Out-Null
+    Clear-StaleSyncTempDirectories $context
+    $token = [guid]::NewGuid().ToString('N')
+    $staging = Join-Path $context.ProjectRoot ".baseline-staging-$token"
+    $backup = Join-Path $context.ProjectRoot ".baseline-backup-$token"
+    Write-Host "[$name] baseline <- $($context.SourceRoot)" -ForegroundColor Cyan
+    try {
+        Copy-PlanToStaging $context $staging
+        $shaInfo = Get-SourceSha $context.SourceRoot
+        $sha = if ($shaInfo.Sha) { $shaInfo.Sha } else { 'unknown' }
+        $worktreeState = Get-SourceWorktreeState $context.SourceRoot
+        $countPath = if ($context.Plan.SourceCountRelative) {
+            Resolve-UnderRoot $staging $context.Plan.SourceCountRelative "[$name] sourceCountPath"
+        } else { $staging }
+        $sourceCount = (Get-ChildItem -LiteralPath $countPath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+        $stamp = Get-Date -Format 'yyyy-MM-ddTHH:mm'
+        "$stamp sync | snapshot=local-worktree commit=$sha worktree=$worktreeState Source=$sourceCount" |
+            Set-Content -LiteralPath (Join-Path $staging '.baseline') -Encoding utf8
+        Install-StagedBaseline $context $staging $backup
+    } catch {
+        if (Test-Path -LiteralPath $staging) { Remove-SafeDirectory $staging $context.ProjectRoot '.baseline-staging-' }
+        if (Test-Path -LiteralPath $backup) {
+            if (-not (Test-Path -LiteralPath $context.Baseline)) {
+                [IO.Directory]::Move((Normalize-FullPath $backup), (Normalize-FullPath $context.Baseline))
+            } else { Write-Warning "[$name] 이전 baseline 백업이 남았습니다: $backup" }
+        }
+        throw
+    }
+    $editRoot = Join-Path $context.ProjectRoot 'edit'
+    $sClaud = Seed-Edit $context.Baseline $editRoot 'Claud' ($ResetEdit -eq 'Claud' -or $ResetEdit -eq 'All')
+    $sCodex = Seed-Edit $context.Baseline $editRoot 'Codex' ($ResetEdit -eq 'Codex' -or $ResetEdit -eq 'All')
+    if (-not $shaInfo.Sha) { Write-Warning "[$name] 파일 미러는 갱신했지만 출처 커밋 SHA를 읽지 못했습니다: $($shaInfo.Error)" }
+    Write-Host "[$name] OK  snapshot=local-worktree  commit=$sha  worktree=$worktreeState  Source=$sourceCount  edit/Claud=$sClaud  edit/Codex=$sCodex" -ForegroundColor Green
+}
+
 if (-not (Test-Path -LiteralPath $manifestPath)) {
     Write-Host "ProjectSync: 등록부가 없어 미러할 프로젝트가 없습니다 ($manifestPath)" -ForegroundColor DarkGray
     exit 0
 }
-
-try {
-    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+try { $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+catch { Write-Error "프로젝트 등록부를 읽지 못했습니다: $manifestPath`n  $($_.Exception.Message)"; exit 1 }
+if ($null -eq $manifest -or -not ($manifest.PSObject.Properties.Name -contains 'projects')) {
+    Write-Error "프로젝트 등록부에 projects 배열이 없습니다: $manifestPath"; exit 1
 }
-catch {
-    Write-Error "프로젝트 등록부를 읽지 못했습니다: $manifestPath`n  $($_.Exception.Message)"
-    exit 1
-}
-
-$entries = @($manifest.projects | Where-Object { $_ -and $_.name -and $_.sourceRepoRoot })
-
-if ($Project) {
-    $entries = @($entries | Where-Object { $_.name -eq $Project })
-    if ($entries.Count -eq 0) {
-        Write-Error "등록되지 않은 프로젝트입니다: '$Project' ($manifestPath)"
-        exit 1
-    }
-}
-
+$entries = @($manifest.projects)
 if ($entries.Count -eq 0) {
-    Write-Host "ProjectSync: 등록된 프로젝트가 없습니다 ($manifestPath)" -ForegroundColor DarkGray
-    exit 0
+    Write-Host "ProjectSync: 등록된 프로젝트가 없습니다 ($manifestPath)" -ForegroundColor DarkGray; exit 0
 }
+try {
+    $seenNames = @{}
+    foreach ($entry in $entries) {
+        $entryName = if ($null -ne $entry) { [string] $entry.name } else { '' }
+        Assert-SafeProjectName $entryName
+        $key = $entryName.ToUpperInvariant()
+        if ($seenNames.ContainsKey($key)) { throw "중복 프로젝트 이름입니다: '$entryName'" }
+        $seenNames[$key] = $true
+    }
+    if ($Project) {
+        $entries = @($entries | Where-Object { ([string] $_.name).Equals($Project, [StringComparison]::OrdinalIgnoreCase) })
+        if ($entries.Count -eq 0) { throw "등록되지 않은 프로젝트입니다: '$Project' ($manifestPath)" }
+    }
+    # Validate every selected project before modifying any baseline.
+    $contexts = @($entries | ForEach-Object { New-ProjectContext $_ })
+} catch { Write-Error $_.Exception.Message; exit 1 }
 
 Write-Host 'ProjectSync' -ForegroundColor Cyan
 Write-Host "  workbench: $repoRoot"
 if ($DryRun) { Write-Host '  mode:      dry-run (아무것도 쓰지 않음)' -ForegroundColor DarkGray }
 Write-Host '  source writes: disabled'
-
-$allOk = $true
-foreach ($entry in $entries) {
-    if (-not (Sync-Project $entry)) { $allOk = $false }
-}
-
-if (-not $allOk) { exit 1 }
+try { foreach ($context in $contexts) { Sync-Project $context } }
+catch { Write-Error $_.Exception.Message; exit 1 }
 Write-Host 'ProjectSync complete.' -ForegroundColor Green
 exit 0

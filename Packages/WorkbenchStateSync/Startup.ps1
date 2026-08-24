@@ -9,7 +9,7 @@
 param(
     [ValidateSet('Register', 'Create')] [string] $Mode = 'Register',
     [Parameter(Mandatory)][string] $VaultRoot,
-    [string] $RepoUrl = 'https://github.com/cyphen156/MultiAgentWorkbenchStateVault.git',
+    [string] $RepoUrl = '',
     [switch] $DryRun
 )
 
@@ -32,9 +32,11 @@ if ($Mode -eq 'Create') {
         Write-Host '  vault already present -> registering existing' -ForegroundColor Green
     }
     elseif ($DryRun) {
+        if (-not $RepoUrl) { throw 'RepoUrl is required to create a missing Vault clone.' }
         Write-Host "  dry-run: would git clone $RepoUrl -> $abs" -ForegroundColor DarkGray
     }
     else {
+        if (-not $RepoUrl) { throw 'RepoUrl is required to create a missing Vault clone.' }
         Write-Host "  git clone $RepoUrl -> $abs"
         & git clone $RepoUrl $abs
         if ($LASTEXITCODE -ne 0) { throw "git clone failed: $RepoUrl" }

@@ -5,7 +5,7 @@
 # Resolution order for a tool (first hit wins):
 #   1) UserSettings/sync-tools.json      local, gitignored registry (absolute or relative toolRoot)
 #   2) legacy Packages/<Tool>/<tool>.config.psd1   backward-compatible fallback (ToolRoot)
-#   3) auto-discovery of standard sibling folders  (private Vault preferred over public Sync)
+#   3) auto-discovery of standard sibling private Vault folders
 #
 # Auto-discovery only resolves a ToolRoot in memory for the current call; it does NOT
 # write sync-tools.json. Persisting a registration is always an explicit action via
@@ -35,7 +35,7 @@ function Resolve-ToolRootPath {
     return [IO.Path]::GetFullPath((Join-Path $RepoRoot $ToolRoot))
 }
 
-# Per-tool default launcher names + auto-discovery candidates (relative to RepoRoot; Vault first).
+# Per-tool default launcher names + auto-discovery candidates (relative to RepoRoot).
 $script:SyncToolDefaults = @{
     'AgentSessionSync' = @{
         StartScript   = 'Launchers\Start.ps1'
@@ -47,8 +47,25 @@ $script:SyncToolDefaults = @{
         StartScript   = 'Launchers\Start.ps1'
         FinishScript  = 'Launchers\Finish.ps1'
         StartupScript = 'Launchers\Initialize-NewMachine.ps1'
-        Candidates    = @('..\MultiAgentWorkbenchStateVault', '..\MultiAgentWorkbenchStateSync')
+        # A public Sync checkout is never a state Vault. Selecting it here could copy
+        # private Workbench state into the public tool repository and push it.
+        Candidates    = @('..\MultiAgentWorkbenchStateVault')
     }
+}
+
+function Resolve-ToolScriptPath {
+    param(
+        [Parameter(Mandatory)][string] $ToolRoot,
+        [Parameter(Mandatory)][string] $ScriptPath,
+        [Parameter(Mandatory)][string] $Label
+    )
+    if ([IO.Path]::IsPathRooted($ScriptPath)) { throw "$Label must be relative to ToolRoot: $ScriptPath" }
+    $root = [IO.Path]::GetFullPath($ToolRoot).TrimEnd('\', '/')
+    $full = [IO.Path]::GetFullPath((Join-Path $root $ScriptPath))
+    if (-not $full.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "$Label escapes ToolRoot: $ScriptPath -> $full"
+    }
+    return $full
 }
 
 function Get-SyncToolDefaults {
@@ -94,7 +111,7 @@ function Resolve-SyncTool {
         } catch { Write-Warning "legacy config parse failed ($LegacyConfigPath): $($_.Exception.Message)" }
     }
 
-    # 3) auto-discovery (private Vault preferred)
+    # 3) auto-discovery of private Vaults only
     foreach ($cand in $defaults.Candidates) {
         $abs = Resolve-ToolRootPath $RepoRoot $cand
         if (Test-Path -LiteralPath (Join-Path $abs $defaults.StartScript)) {
