@@ -32,6 +32,7 @@
 /local.settings.psd1
 /WorkbenchStateSync.local.psd1
 /AgentSessionSync.local.psd1
+/Launchers/Shortcuts/
 /Packages/WorkbenchStateSync/workbenchstatesync.config.psd1
 /Packages/AgentSessionSync/agentsessionsync.config.psd1
 

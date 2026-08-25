@@ -24,8 +24,8 @@ Write-Host "  ToolRoot (as given): $ToolRoot"
 Write-Host "  ToolRoot (resolved): $abs"
 
 foreach ($req in @($defaults.StartScript, $defaults.FinishScript)) {
-    $p = Join-Path $abs $req
-    if (-not (Test-Path -LiteralPath $p)) { throw "Required launcher missing: $p" }
+    $p = Resolve-ToolScriptPath -ToolRoot $abs -ScriptPath $req -Label "AgentSessionSync launcher ($req)"
+    if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { throw "Required launcher missing: $p" }
     Write-Host "  found: $req" -ForegroundColor DarkGray
 }
 

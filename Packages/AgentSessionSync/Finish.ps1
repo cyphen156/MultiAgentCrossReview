@@ -41,13 +41,12 @@ else {
     $source = $entry.Source
 }
 
-$FinishScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $FinishScript))
-if (-not (Test-Path -LiteralPath $FinishScript)) {
-    Write-Host "AgentSessionSync Finish skipped: script not found: $FinishScript" -ForegroundColor Yellow
-    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
+$FinishScript = Resolve-ToolScriptPath -ToolRoot $resolvedRoot -ScriptPath $FinishScript -Label 'AgentSessionSync FinishScript'
+if (-not (Test-Path -LiteralPath $FinishScript -PathType Leaf)) {
+    throw "Registered AgentSessionSync FinishScript is missing: $FinishScript"
 }
 
-Write-Host 'AgentSessionSync Finish' -ForegroundColor Cyan
+Write-Host 'AgentSessionSync Finish (adapter)' -ForegroundColor Cyan
 Write-Host "  source: $source"
 Write-Host "  script: $FinishScript"
 

@@ -45,8 +45,8 @@ if ($Mode -eq 'Create') {
 $canValidate = (Test-Path -LiteralPath $abs)
 if ($canValidate) {
     foreach ($req in @($defaults.StartScript, $defaults.FinishScript)) {
-        $p = Join-Path $abs $req
-        if (-not (Test-Path -LiteralPath $p)) {
+        $p = Resolve-ToolScriptPath -ToolRoot $abs -ScriptPath $req -Label "AgentSessionSync launcher ($req)"
+        if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
             if ($Mode -eq 'Create' -and $DryRun) { continue }
             throw "Required launcher missing: $p"
         }

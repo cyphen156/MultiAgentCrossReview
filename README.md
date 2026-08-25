@@ -119,7 +119,8 @@ Windows 바로가기는 로컬에서 다시 생성합니다.
 .\Launchers\Create-Shortcuts.ps1
 ```
 
-`Launchers/Shortcuts/`의 `.lnk` 파일은 저장소에서 추적하지만 머신 절대경로를 포함하므로, 새로 clone한 뒤에는 위 명령으로 현재 경로에 맞춰야 합니다.
+`Launchers/Shortcuts/`의 `.lnk` 파일은 머신 절대경로를 포함하는 로컬 생성물이며 Git에서 제외됩니다.
+새로 clone하거나 Workbench 경로를 바꾼 뒤 위 명령으로 현재 머신용 바로가기를 만드세요.
 
 ## 디렉터리 안내
 

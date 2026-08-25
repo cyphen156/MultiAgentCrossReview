@@ -17,9 +17,14 @@ AgentSessionSync는 프로젝트별 Workbench 상태가 아니라 등록된 에�
 1. `Start.ps1` 또는 `Finish.ps1`에 직접 전달한 `-ToolRoot`
 2. `UserSettings/sync-tools.json`
 3. 구형 `Packages/AgentSessionSync/agentsessionsync.config.psd1`
-4. 로컬 형제 폴더 `../AgentSessionVault`, 그다음 `../AgentSessionSync`
+4. 로컬 형제 폴더 `../AgentSessionVault`
 
-형제 폴더 탐색은 현재 실행에서만 경로를 찾아 쓰며 등록부를 수정하지 않습니다. 공개 `AgentSessionSync` 폴더까지 확인하는 것은 등록이 없는 개발 환경에서 로컬 도구 사본을 시험하기 위한 fallback입니다. 실제 세션을 운반할 때는 AgentSessionVault를 명시적으로 등록하는 편이 안전합니다.
+형제 폴더 탐색은 현재 실행에서만 경로를 찾아 쓰며 등록부를 수정하지 않습니다. 공개
+`AgentSessionSync` checkout은 실제 대화가 들어갈 private Vault가 아니므로 자동 선택하지 않습니다.
+다른 이름의 Vault는 `Register.ps1`로 명시적으로 등록합니다.
+
+패키지가 미등록이면 선택 기능이므로 루트 Start·Finish에서 SKIP으로 보고합니다. 반대로 등록된
+ToolRoot의 런처가 없거나 ToolRoot 밖으로 이탈하는 경로를 지정하면 설정 오류로 중단합니다.
 
 ## 사용
 
@@ -28,6 +33,15 @@ AgentSessionSync는 프로젝트별 Workbench 상태가 아니라 등록된 에�
 .\Packages\AgentSessionSync\Finish.ps1
 ```
 
-루트 `Start.ps1`과 `Finish.ps1`도 설정된 이 패키지를 실행합니다. ToolRoot를 찾지 못하거나 외부 실행 파일이 없으면 전체 실행을 실패시키지 않고 `SKIP`으로 보고합니다.
+루트 `Start.ps1`과 `Finish.ps1`도 설정된 이 패키지를 실행합니다. ToolRoot를 찾지 못하면 선택 기능이므로
+`SKIP`으로 보고하지만, 등록된 외부 실행 파일이 없으면 잘못된 설정이므로 전체 실행을 실패시킵니다.
 
 AgentSessionVault의 에이전트 등록, 로컬 애플리케이션 경로, 활성·아카이브·삭제 상태와 보존 정책은 이 어댑터에서 설정하지 않습니다.
+
+## 검사
+
+```powershell
+.\Packages\AgentSessionSync\tests\Test-AgentSessionSyncConnector.ps1
+```
+
+테스트는 임시 ToolRoot만 사용하며 실제 AgentSessionVault나 앱 세션을 실행하지 않습니다.

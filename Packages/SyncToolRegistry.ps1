@@ -41,7 +41,10 @@ $script:SyncToolDefaults = @{
         StartScript   = 'Launchers\Start.ps1'
         FinishScript  = 'Launchers\Finish.ps1'
         StartupScript = 'Launchers\Initialize-AgentSessionSync.ps1'
-        Candidates    = @('..\AgentSessionVault', '..\AgentSessionSync')
+        # The public tool checkout is not a private session Vault. Selecting it can
+        # write real conversations into the public repository, so only the standard
+        # private Vault name is eligible for auto-discovery.
+        Candidates    = @('..\AgentSessionVault')
     }
     'WorkbenchStateSync' = @{
         StartScript   = 'Launchers\Start.ps1'

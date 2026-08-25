@@ -38,13 +38,12 @@ else {
     $source = $entry.Source
 }
 
-$StartScript = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $StartScript))
-if (-not (Test-Path -LiteralPath $StartScript)) {
-    Write-Host "AgentSessionSync Start skipped: script not found: $StartScript" -ForegroundColor Yellow
-    exit 200  # skip sentinel: root reports SKIP, not OK/FAIL
+$StartScript = Resolve-ToolScriptPath -ToolRoot $resolvedRoot -ScriptPath $StartScript -Label 'AgentSessionSync StartScript'
+if (-not (Test-Path -LiteralPath $StartScript -PathType Leaf)) {
+    throw "Registered AgentSessionSync StartScript is missing: $StartScript"
 }
 
-Write-Host 'AgentSessionSync Start' -ForegroundColor Cyan
+Write-Host 'AgentSessionSync Start (adapter)' -ForegroundColor Cyan
 Write-Host "  source: $source"
 Write-Host "  script: $StartScript"
 
